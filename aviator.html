@@ -1,0 +1,2517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>PACIFIC THEATER: NAVAL & AERIAL COMBAT SIMULATOR</title>
+  <style>
+    /* ==========================================================================
+       1. CORE SYSTEM & iOS MOBILE STYLING (MILITARY TERMINAL AESTHETIC)
+       ========================================================================== */
+    :root {
+      --bg-base: #0f1416;
+      --bg-panel: #161e20;
+      --bg-subtle: #1f2a2e;
+      --border-color: #2e3f45;
+      --border-bright: #4f6870;
+      
+      --text-main: #d1dcde;
+      --text-dim: #7d9399;
+      --text-bright: #ffffff;
+      
+      --amber-alert: #e09f3e;
+      --green-ok: #52b788;
+      --red-danger: #d90429;
+      --blue-navy: #3a86ff;
+      --cyan-term: #48cae4;
+      
+      --font-mono: 'SF Mono', Monaco, Menlo, Consolas, 'Courier New', monospace;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      touch-action: manipulation;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+
+    /* ==========================================================================
+       2. TOP PINNED TELEMETRY HUD (AIRCRAFT STATUS & SQUADRON)
+       ========================================================================== */
+    #hud-panel {
+      background-color: var(--bg-panel);
+      border-bottom: 2px solid var(--border-bright);
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      z-index: 50;
+    }
+
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-title-zone {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .hud-plane-name {
+      color: var(--cyan-term);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    .hud-callsign {
+      color: var(--amber-alert);
+      font-size: 11px;
+    }
+
+    .hud-badges {
+      display: flex;
+      gap: 4px;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 2px;
+      border: 1px solid var(--border-bright);
+      background: var(--bg-subtle);
+      color: var(--text-dim);
+    }
+    .badge.wingman-ok { border-color: var(--green-ok); color: var(--green-ok); }
+    .badge.wingman-dmg { border-color: var(--amber-alert); color: var(--amber-alert); }
+    .badge.wingman-down { border-color: var(--red-danger); color: var(--red-danger); text-decoration: line-through; }
+
+    /* Flight Instruments Grid */
+    .hud-gauges {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      background: var(--bg-base);
+      padding: 4px;
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+    }
+
+    .gauge-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .gauge-lbl {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .gauge-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+
+    /* Progress & Integrity Bars */
+    .meter-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .meter-box {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meter-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    .meter-bar {
+      height: 6px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.3s ease;
+    }
+    .fill-hull { background: var(--green-ok); }
+    .fill-fuel { background: var(--amber-alert); }
+    .fill-enemy { background: var(--red-danger); }
+    .fill-stamina { background: var(--blue-navy); }
+
+    /* ==========================================================================
+       3. MIDDLE SCROLLABLE CONSOLE & TAB VIEWPORTS
+       ========================================================================== */
+    #main-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 10px;
+      -webkit-overflow-scrolling: touch;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Narrative Tactical Terminal (Shared for Combat/Events) */
+    #terminal-log {
+      flex: 1;
+      background: #0b0e10;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.8);
+      margin-bottom: 8px;
+    }
+
+    .log-entry {
+      line-height: 1.45;
+      border-left: 2px solid transparent;
+      padding-left: 6px;
+      animation: fadeIn 0.2s ease-in;
+    }
+    .log-sys { color: var(--text-dim); border-left-color: var(--border-bright); }
+    .log-info { color: var(--text-main); }
+    .log-action { color: var(--cyan-term); font-weight: 600; }
+    .log-hit { color: var(--green-ok); font-weight: 600; }
+    .log-warn { color: var(--amber-alert); font-weight: 600; }
+    .log-danger { color: var(--red-danger); font-weight: 700; border-left-color: var(--red-danger); }
+    .log-radio { color: #f4a261; font-style: italic; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==========================================================================
+       4. MANUAL & DOSSIER STYLING
+       ========================================================================== */
+    .manual-section {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .manual-section h2 {
+      font-size: 15px;
+      color: var(--amber-alert);
+      border-bottom: 1px solid var(--border-bright);
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .manual-section h3 {
+      font-size: 13px;
+      color: var(--cyan-term);
+      margin: 8px 0 4px 0;
+    }
+    .manual-section p, .manual-section ul {
+      font-size: 12px;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .manual-section ul {
+      padding-left: 18px;
+    }
+    .manual-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-size: 11px;
+    }
+    .manual-table th, .manual-table td {
+      border: 1px solid var(--border-color);
+      padding: 4px 6px;
+      text-align: left;
+    }
+    .manual-table th {
+      background: var(--bg-subtle);
+      color: var(--cyan-term);
+    }
+
+    /* Skill Bars in Pilot Dossier */
+    .skill-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+      padding: 8px;
+      margin-bottom: 6px;
+    }
+    .skill-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 3px;
+    }
+    .skill-name { color: var(--text-bright); font-weight: 600; }
+    .skill-level { color: var(--amber-alert); }
+
+    /* ==========================================================================
+       5. BOTTOM THUMB ZONE (NAVIGATION TABS & ACTION GRID)
+       ========================================================================== */
+    #bottom-control-deck {
+      background-color: var(--bg-panel);
+      border-top: 2px solid var(--border-bright);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    /* 6 Nav Tabs */
+    #nav-tab-bar {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      background: #090c0d;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 8px 2px;
+      text-align: center;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .nav-btn.active {
+      color: var(--text-bright);
+      background: var(--bg-panel);
+      border-bottom: 2px solid var(--cyan-term);
+    }
+
+    /* Dynamic Action Buttons Grid (Ergonomic Finger-friendly) */
+    #action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      padding: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .act-btn {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-bright);
+      color: var(--text-bright);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 12px 6px;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 2px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    .act-btn:active {
+      transform: scale(0.97);
+      background: var(--border-bright);
+    }
+    .act-btn .btn-sub {
+      font-size: 9px;
+      color: var(--text-dim);
+      font-weight: normal;
+    }
+
+    /* Button Color Themes */
+    .btn-red { border-color: var(--red-danger); color: #ff858d; }
+    .btn-blue { border-color: var(--blue-navy); color: #90b8ff; }
+    .btn-amber { border-color: var(--amber-alert); color: #ffd185; }
+    .btn-green { border-color: var(--green-ok); color: #95dfb8; }
+
+    /* Form & Settings Controls */
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .ctrl-group label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .ctrl-select, .ctrl-input, .ctrl-textarea {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-bright);
+      color: var(--text-bright);
+      padding: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      border-radius: 3px;
+    }
+    .ctrl-textarea {
+      resize: none;
+      height: 70px;
+    }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======================================================================
+       TOP PINNED HUD: TELEMETRY & FLIGHT GAUGES
+       ====================================================================== -->
+  <header id="hud-panel">
+    <div class="hud-row">
+      <div class="hud-title-zone">
+        <span class="hud-plane-name" id="hud-plane">P-40B WARHAWK</span>
+        <span class="hud-callsign" id="hud-callsign">[ROOKIE LEAD]</span>
+      </div>
+      <div class="hud-badges" id="hud-formation-badges">
+        <span class="badge wingman-ok" id="badge-dash2">DASH-2: READY</span>
+        <span class="badge wingman-ok" id="badge-dash3">DASH-3: READY</span>
+      </div>
+    </div>
+
+    <div class="hud-gauges">
+      <div class="gauge-item">
+        <span class="gauge-lbl">SPD (KTS)</span>
+        <span class="gauge-val" id="val-speed">210</span>
+      </div>
+      <div class="gauge-item">
+        <span class="gauge-lbl">ALT (FT)</span>
+        <span class="gauge-val" id="val-alt">3,500</span>
+      </div>
+      <div class="gauge-item">
+        <span class="gauge-lbl">THROTTLE</span>
+        <span class="gauge-val" id="val-throttle">85%</span>
+      </div>
+      <div class="gauge-item">
+        <span class="gauge-lbl">AMMO</span>
+        <span class="gauge-val" id="val-ammo">100%</span>
+      </div>
+    </div>
+
+    <div class="meter-container">
+      <div class="meter-box">
+        <div class="meter-header">
+          <span>AIRFRAME INTEGRITY</span>
+          <span id="txt-hull">100%</span>
+        </div>
+        <div class="meter-bar">
+          <div class="meter-fill fill-hull" id="bar-hull" style="width: 100%;"></div>
+        </div>
+      </div>
+      <div class="meter-box">
+        <div class="meter-header">
+          <span>FUEL LEVEL</span>
+          <span id="txt-fuel">100%</span>
+        </div>
+        <div class="meter-bar">
+          <div class="meter-fill fill-fuel" id="bar-fuel" style="width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================================================================
+       MAIN VIEWPORT CONTAINER (TABS)
+       ====================================================================== -->
+  <main id="main-viewport">
+
+    <!-- TAB 1: CAMPAIGN TAB -->
+    <section class="tab-content active" id="tab-campaign">
+      <div id="terminal-log">
+        <div class="log-entry log-sys">[SYS] PACIFIC CAMPAIGN SYSTEM INITIALIZED.</div>
+        <div class="log-entry log-radio">"Wheeler Control to all pilots! Heavy formations of unidentified aircraft diving from the north! This is no drill! Repeat, Pearl is under attack!"</div>
+        <div class="log-entry log-warn">STATUS: Sirens wailing across Oahu. P-40B Warhawks warming up on the tarmac. Bomb craters ripping through the runway.</div>
+      </div>
+    </section>
+
+    <!-- TAB 2: QUICK DOGFIGHT TAB -->
+    <section class="tab-content" id="tab-dogfight">
+      <div class="manual-section">
+        <h2>QUICK ACTION SKIRMISH SETUP</h2>
+        <div class="ctrl-group">
+          <label>SELECT YOUR AIRCRAFT (27 AVAILABLE):</label>
+          <select class="ctrl-select" id="dogfight-player-plane">
+            <!-- Populated dynamically via JS in Part 2 -->
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <label>SELECT ADVERSARY:</label>
+          <select class="ctrl-select" id="dogfight-enemy-plane">
+            <option value="A6M2_ZERO">Mitsubishi A6M2 Model 21 "Zero"</option>
+            <option value="A6M5_ZERO">Mitsubishi A6M5 Model 52 "Zero"</option>
+            <option value="KI43_OSCAR">Nakajima Ki-43 "Oscar"</option>
+            <option value="KI84_FRANK">Nakajima Ki-84 "Frank"</option>
+            <option value="N1K2_GEORGE">Kawanishi N1K2-J "George"</option>
+            <option value="D3A_VAL">Aichi D3A "Val" (Dive Bomber)</option>
+            <option value="B5N_KATE">Nakajima B5N "Kate" (Torpedo)</option>
+            <option value="G4M_BETTY">Mitsubishi G4M "Betty" (Twin-Engine)</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <label>FLIGHT FORMATION SIZE:</label>
+          <select class="ctrl-select" id="dogfight-flight-size">
+            <option value="1">Solo (1v1 Duel)</option>
+            <option value="2" selected>2-Ship Element (Lead + Dash-2 Wingman)</option>
+            <option value="4">4-Ship Division (Full Squadron Section)</option>
+          </select>
+        </div>
+        <div class="ctrl-group">
+          <label>STARTING TACTICAL ADVANTAGE:</label>
+          <select class="ctrl-select" id="dogfight-advantage">
+            <option value="OFFENSIVE">Offensive (Bouncing Bogey from 6 o'clock)</option>
+            <option value="NEUTRAL" selected>Neutral (Head-On Approach)</option>
+            <option value="DEFENSIVE">Defensive (Enemy on your tail!)</option>
+          </select>
+        </div>
+        <button class="act-btn btn-green" id="btn-start-dogfight" style="width: 100%; margin-top: 6px;">
+          SCRAMBLE FORCES & ENGAGE
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 3: TRAINING RANGE TAB -->
+    <section class="tab-content" id="tab-training">
+      <div class="manual-section">
+        <h2>FLIGHT QUALIFICATION & COMBAT TRAINING</h2>
+        <p>Master critical naval flight skills before facing combat. Complete tests to boost pilot skill levels.</p>
+        
+        <div class="ctrl-group">
+          <label>SELECT TRAINING MODULE:</label>
+          <select class="ctrl-select" id="training-module-select">
+            <option value="CARRIER_TAKEOFF">1. Carrier Deck Takeoff (Headwind & Flaps)</option>
+            <option value="CARRIER_TRAP">2. Carrier Trap (LSO Paddles & 3-Wire Landing)</option>
+            <option value="DIVE_BOMB">3. High-Angle 70° Dive Bombing Range</option>
+            <option value="TORPEDO_RUN">4. Sea-Skimming 100ft Torpedo Drop</option>
+            <option value="ROCKET_GLIDE">5. Me-163 Komet Dead-Stick Skid Landing</option>
+          </select>
+        </div>
+        <button class="act-btn btn-blue" id="btn-start-training" style="width: 100%; margin-top: 6px;">
+          ENTER TRAINING RUNWAY / PATTERN
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 4: PILOT LOG & PROGRESSION (LV 1 - 100) -->
+    <section class="tab-content" id="tab-pilot">
+      <div class="manual-section">
+        <h2>PILOT SERVICE DOSSIER</h2>
+        <div class="hud-row" style="margin-bottom: 8px;">
+          <div><strong>PILOT:</strong> <span id="dos-name">Lt. J. Hawthorne</span></div>
+          <div><strong>RANK:</strong> <span id="dos-rank">Ensign</span></div>
+        </div>
+        <div class="hud-row" style="margin-bottom: 8px;">
+          <div><strong>KILLS:</strong> <span id="dos-kills">0</span></div>
+          <div><strong>SHIPS SUNK:</strong> <span id="dos-ships">0</span></div>
+          <div><strong>SORTIES:</strong> <span id="dos-sorties">0</span></div>
+        </div>
+        <div><strong>AWARDS:</strong> <span id="dos-medals" style="color: var(--amber-alert);">None</span></div>
+      </div>
+
+      <div class="manual-section">
+        <h2>SKILL PROFICIENCY MATRIX (LV 1 - 100)</h2>
+        <div id="skills-matrix-container">
+          <!-- Populated dynamically via JS in Part 2 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: IN-DEPTH FLIGHT & TACTICAL MANUAL -->
+    <section class="tab-content" id="tab-manual">
+      <div class="manual-section">
+        <h2>SECTION I: TACTICAL FLIGHT DOCTRINES</h2>
+        <h3>1. Energy vs. Turn Fighting (Boom & Zoom)</h3>
+        <p>The Mitsubishi A6M Zero has an ultra-light wing loading giving it an unmatched turn radius below 200 knots. <strong>Never engage a Zero in a horizontal turning fight.</strong> American fighters (Wildcat, Warhawk, Hellcat, Corsair) possess high structural weight, armor plating, and heavy wing loadings. They dive faster, retain energy, and hit with massive kinetic energy.</p>
+        <p><em>The Rule:</em> Dive from altitude, make a high-speed firing pass ("Boom"), and pull up smoothly into a climbing zoom ("Zoom"). If you miss, do not turn back—continue your high-speed climb until out of reach.</p>
+
+        <h3>2. The Thach Weave (Tactical Wingman S-Turns)</h3>
+        <p>Invented by Lt. Cdr. John S. Thach. When an agile enemy attaches to your tail, you and your wingman fly parallel paths approximately 300 yards apart. When the enemy closes, both planes turn sharply <em>inward toward each other</em> in continuous S-curves. As you cross flight paths, your wingman gets an unevadable direct head-on deflection shot right across your tail.</p>
+
+        <h3>3. High-G Deflection Shooting</h3>
+        <p>Do not shoot directly at an enemy banking away from you. You must "lead" the target by firing machine gun bursts into the empty air ahead of the enemy's nose. Higher <em>Gunnery Skill</em> significantly tightens your bullet dispersion and snapshot critical hits.</p>
+
+        <h3>4. The 70° Screaming Dive Bombing Technique (SBD Dauntless)</h3>
+        <p>Approach target fleet at 12,000 feet. Spot the carrier deck. Deploy perforated dive brakes to prevent structural breakup. Roll inverted, pull the nose down into a 70° near-vertical dive. Line up the bombsight reticle. Withstand the roaring slipstream, release ordnance at 1,500 feet, and haul back on the stick for a grueling 5-to-6G pullout.</p>
+
+        <h3>5. Naval Torpedo Drop Envelope (Mark 13)</h3>
+        <p>The early-war Mark 13 torpedo will break apart or sink if dropped improperly. You must maintain <strong>100 to 120 feet altitude</strong> and <strong>105 to 115 knots airspeed</strong> in level flight for 10 seconds through brutal 25mm shipboard anti-aircraft flak to achieve an armed run.</p>
+      </div>
+
+      <div class="manual-section">
+        <h2>SECTION II: CARRIER OPERATIONS & LSO PADDLE SIGNALS</h2>
+        <p>The Landing Signal Officer (LSO) stands on the port stern platform with high-visibility paddles:</p>
+        <ul>
+          <li><strong>Paddles Level & Horizontal:</strong> "On Glideslope / Approach OK". Maintain current airspeed and descent rate.</li>
+          <li><strong>Paddles High Above Head:</strong> "Too High / Dip Nose". Reduce throttle slightly to settle the aircraft.</li>
+          <li><strong>Paddles Low Near Knees:</strong> "Too Low / Add Throttle!" Add immediate engine manifold pressure to avoid crashing into the stern ramp ("Ramp Strike").</li>
+          <li><strong>Paddles Slashing Across Body:</strong> "CUT ENGINE!" Cut throttle to idle immediately and drop into the arresting wires.</li>
+          <li><strong>Paddles Waving Over Head Rapidly:</strong> "WAVE OFF!" Go-around immediately! Full throttle, gear and flaps up, clear the deck!</li>
+        </ul>
+        <p><em>Arresting Gear:</em> Four steel cables stretch across the carrier deck. Catching the <strong>#3 Wire</strong> is the ideal naval trap. Catching the #1 wire is dangerously close to the stern; catching the #4 wire is dangerously close to the crash barrier.</p>
+      </div>
+
+      <div class="manual-section">
+        <h2>SECTION III: SUBSYSTEM DAMAGE & EMERGENCY PROCEDURES</h2>
+        <table class="manual-table">
+          <tr><th>Damage Type</th><th>Telemetry Indicator</th><th>Emergency Tactic</th></tr>
+          <tr><td>Oil Line Punctured</td><td>Engine Temp > 240°C</td><td>Throttle back to 60%, avoid high-RPM climbs, limp toward friendly fleet before engine seizures.</td></tr>
+          <tr><td>Fuel Tank Punctured</td><td>Fuel drops 5%/turn</td><td>Jettison external tanks, turn immediately toward base, prepare for dead-stick ditching.</td></tr>
+          <tr><td>Rudder/Cable Severed</td><td>Turn Rate -50%</td><td>Use differential ailerons and engine torque to steer; avoid carrier traps.</td></tr>
+          <tr><td>Shattered Canopy</td><td>Wind blast / Fatigue</td><td>Descend below 5,000 ft, slow airspeed to under 160 kts.</td></tr>
+        </table>
+      </div>
+
+      <div class="manual-section">
+        <h2>SECTION IV: COMPLETE 27-AIRCRAFT SPECIFICATION HANGAR</h2>
+        <table class="manual-table">
+          <tr><th>Aircraft</th><th>Role</th><th>Armament</th><th>Tactical Notes</th></tr>
+          <tr><td>F2A-3 Buffalo</td><td>USN Fighter</td><td>4x .50 cal</td><td>Agile at low speeds; very fragile.</td></tr>
+          <tr><td>P-40B Warhawk</td><td>USAAF Fighter</td><td>2x .50, 4x .30</td><td>Heavy, supreme dive, Pearl Harbor defender.</td></tr>
+          <tr><td>F4F-4 Wildcat</td><td>USN Fighter</td><td>6x .50 cal</td><td>Rugged armor, self-sealing tanks, Thach Weave.</td></tr>
+          <tr><td>FM-2 Wildcat</td><td>USN Escort Ftr</td><td>4x .50 cal</td><td>Lightweight, supercharged climb for escort carriers.</td></tr>
+          <tr><td>F6F-5 Hellcat</td><td>USN Fighter</td><td>6x .50 cal</td><td>2,000 HP radial, supreme dive/zoom, Zero killer.</td></tr>
+          <tr><td>F4U-1D Corsair</td><td>USN/USMC Ftr</td><td>6x .50, Rockets</td><td>High speed bent-wing demon, long nose deck view.</td></tr>
+          <tr><td>F8F-1 Bearcat</td><td>USN Interceptor</td><td>4x .50 cal</td><td>Lightweight rocket climb rate, late-war apex.</td></tr>
+          <tr><td>P-38G Lightning</td><td>USAAF Heavy Ftr</td><td>4x .50, 1x 20mm</td><td>Twin-boom, extreme range and concentrated nose firepower.</td></tr>
+          <tr><td>P-47D Thunderbolt</td><td>USAAF Escort</td><td>8x .50 cal</td><td>Massive radial, absorbs heavy flak damage, high ceiling.</td></tr>
+          <tr><td>P-51D Mustang</td><td>USAAF VLR Escort</td><td>6x .50 cal</td><td>Laminar wing, 7-hour range, Tokyo B-29 escorts.</td></tr>
+          <tr><td>TBD-1 Devastator</td><td>USN Torpedo</td><td>1x Mk13 Torpedo</td><td>Slow, extremely vulnerable; disciplined low-and-slow.</td></tr>
+          <tr><td>SBD-3 Dauntless</td><td>USN Dive Bomber</td><td>1,000lb bomb, 2x .30</td><td>Swiss-cheese dive flaps, deadly 70° vertical dives.</td></tr>
+          <tr><td>TBF-1C Avenger</td><td>USN Torpedo/Lvl</td><td>Torpedo or 2,000lb</td><td>Powered ball turret, ventral tunnel gun, sturdy.</td></tr>
+          <tr><td>SB2C-4 Helldiver</td><td>USN Dive Bomber</td><td>2,000lb bomb, 2x 20mm</td><td>High speed, heavy payload, high landing stall speed.</td></tr>
+          <tr><td>B-25B Mitchell</td><td>USAAF Med Bomber</td><td>Nose guns, Bombs</td><td>Carrier deck launch capable (Doolittle Raid).</td></tr>
+          <tr><td>PBY-5A Catalina</td><td>USN Patrol/Rescue</td><td>Depth charges, .50s</td><td>Flying boat, high oceanic endurance, pilot rescue.</td></tr>
+          <tr><td>Spitfire Mk.VIII</td><td>RAF/RAAF Ftr</td><td>2x 20mm, 4x .303</td><td>Exceptional turn rate and rate of climb.</td></tr>
+          <tr><td>Seafire Mk.III</td><td>FAA Carrier Ftr</td><td>2x 20mm, 4x .303</td><td>Carrier-adapted Spitfire; fragile landing gear.</td></tr>
+          <tr><td>Sea Hurricane</td><td>FAA Carrier Ftr</td><td>8x .303 or 4x 20mm</td><td>Rugged, stable gun platform.</td></tr>
+          <tr><td>Fairey Swordfish</td><td>FAA Biplane Torp</td><td>1x Torpedo</td><td>85-knot cruise, virtually stall-proof, biplane agility.</td></tr>
+          <tr><td>Mosquito FB.VI</td><td>RAF/RAAF Strike</td><td>4x 20mm, Rockets</td><td>Wooden twin-engine speed demon.</td></tr>
+          <tr><td>Me-163B Komet</td><td>Captured Rocket</td><td>2x 30mm Cannon</td><td>600 kts, 3-min fuel burnout, dead-stick glide landing.</td></tr>
+          <tr><td>Me-262A Schwalbe</td><td>Captured Jet Ftr</td><td>4x 30mm Cannon</td><td>Blistering jet speed; slow throttle spool-up.</td></tr>
+          <tr><td>J8M1 Shusui</td><td>IJN Rocket Interceptor</td><td>2x 30mm Cannon</td><td>Japanese rocket interceptor prototype.</td></tr>
+          <tr><td>Akutan A6M2</td><td>Evaluated Zero</td><td>2x 20mm, 2x 7.7mm</td><td>Test the Zero's stiff ailerons above 250 kts.</td></tr>
+          <tr><td>J7W1 Shinden</td><td>IJN Canard Interceptor</td><td>4x 30mm Cannon</td><td>Radical pusher-prop high-speed dogfighter.</td></tr>
+          <tr><td>P-39D Airacobra</td><td>USAAF Ground/Ftr</td><td>1x 37mm, 4x .30</td><td>Car door cockpit, deadly 37mm nose gun over Guadalcanal.</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 6: SETTINGS & GOD MODE -->
+    <section class="tab-content" id="tab-settings">
+      <div class="manual-section">
+        <h2>GOD MODE / TEST SUITE</h2>
+        <div class="toggle-row">
+          <span>INVULNERABILITY (0 DAMAGE):</span>
+          <input type="checkbox" id="god-invulnerable">
+        </div>
+        <div class="toggle-row">
+          <span>INFINITE AMMUNITION & ORDNANCE:</span>
+          <input type="checkbox" id="god-infinite-ammo">
+        </div>
+        <div class="toggle-row">
+          <span>UNLIMITED FUEL / ROCKET BURNTIME:</span>
+          <input type="checkbox" id="god-unlimited-fuel">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;">
+          <button class="act-btn btn-amber" id="btn-god-max-stats">MAX ALL STATS (LV 100)</button>
+          <button class="act-btn btn-amber" id="btn-god-unlock-all">UNLOCK ALL 27 PLANES</button>
+        </div>
+        <button class="act-btn btn-red" id="btn-god-autowin" style="width: 100%; margin-top: 6px;">
+          AUTO-WIN CURRENT COMBAT / MISSION
+        </button>
+      </div>
+
+      <div class="manual-section">
+        <h2>DATA BACKUP & CROSS-DEVICE SAVE / LOAD</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+          <button class="act-btn btn-blue" id="btn-save-game">SAVE PROGRESS</button>
+          <button class="act-btn btn-blue" id="btn-load-game">LOAD PROGRESS</button>
+        </div>
+        <div class="ctrl-group">
+          <label>EXPORT / IMPORT DATA STRING (PASTE TO/FROM PC OR NOTES):</label>
+          <textarea class="ctrl-textarea" id="save-data-box" placeholder="Your save data string will appear here..."></textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          <button class="act-btn btn-green" id="btn-export-save">EXPORT TO TEXT</button>
+          <button class="act-btn btn-green" id="btn-import-save">IMPORT FROM TEXT</button>
+        </div>
+        <button class="act-btn btn-red" id="btn-reset-career" style="width: 100%; margin-top: 10px;">
+          RESET CAREER DATA (WIPE CLEAN)
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================================
+       BOTTOM CONTROL DECK: TAB SELECTOR & TACTICAL ACTIONS
+       ====================================================================== -->
+  <footer id="bottom-control-deck">
+    <!-- 6 Navigation Tabs -->
+    <nav id="nav-tab-bar">
+      <button class="nav-btn active" data-tab="tab-campaign">CAMPAIGN</button>
+      <button class="nav-btn" data-tab="tab-dogfight">DOGFIGHT</button>
+      <button class="nav-btn" data-tab="tab-training">TRAINING</button>
+      <button class="nav-btn" data-tab="tab-pilot">DOSSIER</button>
+      <button class="nav-btn" data-tab="tab-manual">MANUAL</button>
+      <button class="nav-btn" data-tab="tab-settings">SETTINGS</button>
+    </nav>
+
+    <!-- Context-Sensitive Dynamic Touch Action Grid -->
+    <div id="action-grid">
+      <!-- In Part 2 & Part 3, buttons are generated here dynamically -->
+      <button class="act-btn btn-green" id="btn-default-action">
+        <span>COMMENCE SCRAMBLE</span>
+        <span class="btn-sub">Taxi onto runway & fire Allison engine</span>
+      </button>
+      <button class="act-btn btn-blue" id="btn-default-inspect">
+        <span>RADIO REPORT</span>
+        <span class="btn-sub">Request radar track from Oahu</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- ======================================================================
+       JAVASCRIPT INGESTION POINT (PART 2 & PART 3 PLUG IN HERE)
+       ====================================================================== -->
+  <script>
+    // --- [PART 1 CLOSING - PART 2 JAVASCRIPT CONTINUES DIRECTLY BELOW] ---
+/* ==========================================================================
+       PART 2: MASTER AIRCRAFT DATABASE (27 PLAYABLE BIRDS + ADVERSARIES)
+       ========================================================================== */
+    const AIRCRAFT_DB = {
+      // --- US NAVY & USMC CARRIER BIRDS ---
+      F2A_BUFFALO: {
+        id: "F2A_BUFFALO", name: "Brewster F2A-3 Buffalo", faction: "USN", role: "Fighter",
+        topSpeed: 279, climbRate: 2300, turnRate: 88, diveLimit: 360, armor: 45, fuelCapacity: 160,
+        weapons: { guns: "4x .50 cal Browning M2", ammo: 1600, ordnance: "None" },
+        carrierCapable: true, stallSpeed: 73,
+        desc: "Underpowered pre-war fighter with nimble low-speed turns, but fragile structure and no armor glass."
+      },
+      P40B_WARHAWK: {
+        id: "P40B_WARHAWK", name: "Curtiss P-40B Warhawk", faction: "USAAF", role: "Fighter",
+        topSpeed: 310, climbRate: 2600, turnRate: 68, diveLimit: 480, armor: 70, fuelCapacity: 150,
+        weapons: { guns: "2x .50 cal + 4x .30 cal M1919", ammo: 2400, ordnance: "1x 500lb Bomb" },
+        carrierCapable: false, stallSpeed: 80,
+        desc: "Rugged Allison engine fighter. Heavy, dives like a streamlined brick, devastating forward firepower."
+      },
+      F4F4_WILDCAT: {
+        id: "F4F4_WILDCAT", name: "Grumman F4F-4 Wildcat", faction: "USN", role: "Carrier Fighter",
+        topSpeed: 318, climbRate: 2200, turnRate: 72, diveLimit: 440, armor: 85, fuelCapacity: 144,
+        weapons: { guns: "6x .50 cal Browning M2", ammo: 1440, ordnance: "2x 100lb Bombs" },
+        carrierCapable: true, stallSpeed: 76,
+        desc: "Rugged Grumman 'Iron Works' carrier standard. Self-sealing fuel tanks, folding wings, Thach Weave specialist."
+      },
+      FM2_WILDCAT: {
+        id: "FM2_WILDCAT", name: "General Motors FM-2 Wildcat", faction: "USN", role: "Escort Fighter",
+        topSpeed: 332, climbRate: 3300, turnRate: 78, diveLimit: 430, armor: 80, fuelCapacity: 126,
+        weapons: { guns: "4x .50 cal Browning M2", ammo: 1720, ordnance: "6x HVAR Rockets" },
+        carrierCapable: true, stallSpeed: 72,
+        desc: "Lightened hot-rod Wildcat built for CVE 'Jeep' escort carriers. Exceptional climb rate and rocket capability."
+      },
+      F6F5_HELLCAT: {
+        id: "F6F5_HELLCAT", name: "Grumman F6F-5 Hellcat", faction: "USN", role: "Carrier Fighter",
+        topSpeed: 380, climbRate: 3500, turnRate: 75, diveLimit: 500, armor: 100, fuelCapacity: 250,
+        weapons: { guns: "6x .50 cal Browning M2", ammo: 2400, ordnance: "2x 1,000lb Bombs / 6x Rockets" },
+        carrierCapable: true, stallSpeed: 84,
+        desc: "The 2,000 HP Pratt & Whitney Zero-killer. High-altitude turbo power, extreme armor plate, stable deck traps."
+      },
+      F4U1D_CORSAIR: {
+        id: "F4U1D_CORSAIR", name: "Vought F4U-1D Corsair", faction: "USN", role: "Fighter-Bomber",
+        topSpeed: 425, climbRate: 3800, turnRate: 74, diveLimit: 550, armor: 95, fuelCapacity: 237,
+        weapons: { guns: "6x .50 cal Browning M2", ammo: 2400, ordnance: "2x 1,000lb Bombs / 8x 5-inch Rockets" },
+        carrierCapable: true, stallSpeed: 89,
+        desc: "The 'Whistling Death'. Inverted gull wings, blinding top speed, long nose requiring curved carrier landings."
+      },
+      F8F1_BEARCAT: {
+        id: "F8F1_BEARCAT", name: "Grumman F8F-1 Bearcat", faction: "USN", role: "Interceptor",
+        topSpeed: 421, climbRate: 4600, turnRate: 85, diveLimit: 520, armor: 80, fuelCapacity: 185,
+        weapons: { guns: "4x .50 cal Browning M2", ammo: 1250, ordnance: "2x 1,000lb Bombs" },
+        carrierCapable: true, stallSpeed: 81,
+        desc: "Ultra-compact interceptor designed strictly for climb rate and dogfighting superiority over kamikazes."
+      },
+      TBD1_DEVASTATOR: {
+        id: "TBD1_DEVASTATOR", name: "Douglas TBD-1 Devastator", faction: "USN", role: "Torpedo Bomber",
+        topSpeed: 206, climbRate: 1200, turnRate: 50, diveLimit: 280, armor: 50, fuelCapacity: 180,
+        weapons: { guns: "1x .50 cal fixed + 1x .30 cal rear", ammo: 1000, ordnance: "1x Mark 13 Aerial Torpedo" },
+        carrierCapable: true, stallSpeed: 68,
+        desc: "Slow, vulnerable early-war torpedo plane. Demands strict low-and-slow approaches through flak."
+      },
+      SBD3_DAUNTLESS: {
+        id: "SBD3_DAUNTLESS", name: "Douglas SBD-3 Dauntless", faction: "USN", role: "Dive Bomber",
+        topSpeed: 252, climbRate: 1700, turnRate: 65, diveLimit: 425, armor: 85, fuelCapacity: 260,
+        weapons: { guns: "2x .50 cal forward + twin .30 cal rear", ammo: 1800, ordnance: "1x 1,000lb Bomb + 2x 100lb" },
+        carrierCapable: true, stallSpeed: 78,
+        desc: "The hero of Midway. Perforated Swiss-cheese dive flaps permit stable 70° vertical bombing dives."
+      },
+      TBF1C_AVENGER: {
+        id: "TBF1C_AVENGER", name: "Grumman TBF-1C Avenger", faction: "USN", role: "Torpedo/Level Bomber",
+        topSpeed: 275, climbRate: 2000, turnRate: 58, diveLimit: 360, armor: 95, fuelCapacity: 330,
+        weapons: { guns: "2x .50 cal wings + 1x .50 dorsal turret + 1x .30 ventral", ammo: 2200, ordnance: "1x Mark 13 Torpedo or 4x 500lb Bombs" },
+        carrierCapable: true, stallSpeed: 75,
+        desc: "Heavy, survivable strike bomber with internal bay and motorized power ball turret."
+      },
+      SB2C4_HELLDIVER: {
+        id: "SB2C4_HELLDIVER", name: "Curtiss SB2C-4 Helldiver", faction: "USN", role: "Heavy Dive Bomber",
+        topSpeed: 295, climbRate: 2100, turnRate: 60, diveLimit: 430, armor: 90, fuelCapacity: 320,
+        weapons: { guns: "2x 20mm cannons + twin .30 cal rear", ammo: 1400, ordnance: "1x 2,000lb Bomb / 8x Rockets" },
+        carrierCapable: true, stallSpeed: 85,
+        desc: "Massive bomb bay and twin 20mm cannons, but aggressive stall characteristics requiring high pilot discipline."
+      },
+
+      // --- USAAF LAND-BASED STRIKE & ESCORT ---
+      P39D_AIRACOBRA: {
+        id: "P39D_AIRACOBRA", name: "Bell P-39D Airacobra", faction: "USAAF", role: "Fighter-Strafing",
+        topSpeed: 360, climbRate: 3100, turnRate: 70, diveLimit: 475, armor: 75, fuelCapacity: 120,
+        weapons: { guns: "1x 37mm M4 Cannon + 2x .50 cal + 4x .30 cal", ammo: 1230, ordnance: "1x 500lb Bomb" },
+        carrierCapable: false, stallSpeed: 88,
+        desc: "Mid-engine layout with tricycle gear and car-door cockpit. The 37mm nose cannon shreds transports and barges."
+      },
+      P38G_LIGHTNING: {
+        id: "P38G_LIGHTNING", name: "Lockheed P-38G Lightning", faction: "USAAF", role: "Heavy Interceptor",
+        topSpeed: 400, climbRate: 3600, turnRate: 64, diveLimit: 510, armor: 90, fuelCapacity: 300,
+        weapons: { guns: "1x 20mm Hispano + 4x .50 cal nose", ammo: 2150, ordnance: "2x 1,000lb Bombs" },
+        carrierCapable: false, stallSpeed: 92,
+        desc: "Twin-engine twin-boom interceptor. Concentrated nose armament with zero wing-convergence drop."
+      },
+      P47D_THUNDERBOLT: {
+        id: "P47D_THUNDERBOLT", name: "Republic P-47D Thunderbolt", faction: "USAAF", role: "Heavy Fighter",
+        topSpeed: 430, climbRate: 3200, turnRate: 58, diveLimit: 580, armor: 120, fuelCapacity: 305,
+        weapons: { guns: "8x .50 cal Browning M2", ammo: 3400, ordnance: "2x 1,000lb Bombs + Rockets" },
+        carrierCapable: false, stallSpeed: 95,
+        desc: "The seven-ton 'Jug'. Double Wasp turbocharger, absorbs massive anti-aircraft fire, unmatched diving weight."
+      },
+      P51D_MUSTANG: {
+        id: "P51D_MUSTANG", name: "North American P-51D Mustang", faction: "USAAF", role: "VLR Escort Fighter",
+        topSpeed: 437, climbRate: 3450, turnRate: 72, diveLimit: 530, armor: 85, fuelCapacity: 269,
+        weapons: { guns: "6x .50 cal Browning M2", ammo: 1880, ordnance: "2x 1,000lb Bombs / 6x Rockets" },
+        carrierCapable: false, stallSpeed: 87,
+        desc: "Rolls-Royce/Packard Merlin engine and laminar flow wing. Built for 1,500-mile B-29 escorts to Tokyo."
+      },
+      B25B_MITCHELL: {
+        id: "B25B_MITCHELL", name: "North American B-25B Mitchell", faction: "USAAF", role: "Medium Bomber",
+        topSpeed: 275, climbRate: 1500, turnRate: 42, diveLimit: 340, armor: 100, fuelCapacity: 670,
+        weapons: { guns: "6x .50 cal + twin dorsal turret", ammo: 3000, ordnance: "3,000lb Bomb Load" },
+        carrierCapable: true, stallSpeed: 82, // Historically launched from Hornet (Doolittle)
+        desc: "Twin-engine medium bomber capable of emergency short-deck carrier takeoff for strategic retaliatory strikes."
+      },
+      PBY5A_CATALINA: {
+        id: "PBY5A_CATALINA", name: "Consolidated PBY-5A Catalina", faction: "USN", role: "Flying Boat Patrol",
+        topSpeed: 175, climbRate: 1000, turnRate: 35, diveLimit: 220, armor: 65, fuelCapacity: 900,
+        weapons: { guns: "2x .30 nose + 2x .50 waist blisters", ammo: 2000, ordnance: "4x Depth Charges / Torpedoes" },
+        carrierCapable: false, stallSpeed: 62,
+        desc: "Amphibious patrol flying boat. Extreme 24-hour endurance for fleet scouting, anti-sub sweeps, and ocean pilot rescue."
+      },
+
+      // --- ALLIED COMMONWEALTH (BRITISH PACIFIC FLEET / RAAF) ---
+      SPITFIRE_MK8: {
+        id: "SPITFIRE_MK8", name: "Supermarine Spitfire Mk.VIII", faction: "RAF/RAAF", role: "Interceptor",
+        topSpeed: 408, climbRate: 4200, turnRate: 92, diveLimit: 480, armor: 70, fuelCapacity: 144,
+        weapons: { guns: "2x 20mm Hispano Mk.II + 4x .303 Browning", ammo: 1700, ordnance: "1x 500lb Bomb" },
+        carrierCapable: false, stallSpeed: 75,
+        desc: "Tropicalized supreme dogfighter. Razor-sharp turning circle capable of out-dueling late-war interceptors."
+      },
+      SEAFIRE_MK3: {
+        id: "SEAFIRE_MK3", name: "Supermarine Seafire Mk.III", faction: "FAA", role: "Carrier Fighter",
+        topSpeed: 352, climbRate: 3800, turnRate: 90, diveLimit: 450, armor: 65, fuelCapacity: 125,
+        weapons: { guns: "2x 20mm Hispano + 4x .303 Browning", ammo: 1500, ordnance: "1x 500lb Bomb" },
+        carrierCapable: true, stallSpeed: 74,
+        desc: "Carrier-adapted Spitfire. Agile interceptor, but fragile landing gear requires pristine deckmanship."
+      },
+      SEA_HURRICANE: {
+        id: "SEA_HURRICANE", name: "Hawker Sea Hurricane Mk.IB", faction: "FAA", role: "Carrier Fighter",
+        topSpeed: 312, climbRate: 2400, turnRate: 76, diveLimit: 410, armor: 85, fuelCapacity: 120,
+        weapons: { guns: "8x .303 Browning machine guns", ammo: 2600, ordnance: "None" },
+        carrierCapable: true, stallSpeed: 68,
+        desc: "Rugged fabric-and-tube construction. Highly stable gun platform with forgiving carrier approach manners."
+      },
+      SWORDFISH_MK1: {
+        id: "SWORDFISH_MK1", name: "Fairey Swordfish Mk.I 'Stringbag'", faction: "FAA", role: "Biplane Torpedo",
+        topSpeed: 143, climbRate: 1100, turnRate: 85, diveLimit: 200, armor: 40, fuelCapacity: 155,
+        weapons: { guns: "1x .303 fixed + 1x .303 rear", ammo: 1200, ordnance: "1x 18-inch Aerial Torpedo" },
+        carrierCapable: true, stallSpeed: 55,
+        desc: "Fabric biplane cruising at 85 knots. Virtually stall-proof, shrugs off bullet holes, deadly night torpedo bomber."
+      },
+      MOSQUITO_FB6: {
+        id: "MOSQUITO_FB6", name: "De Havilland Mosquito FB Mk.VI", faction: "RAF/RAAF", role: "Strike Fighter",
+        topSpeed: 380, climbRate: 2850, turnRate: 60, diveLimit: 460, armor: 60, fuelCapacity: 450,
+        weapons: { guns: "4x 20mm Hispano + 4x .303 nose", ammo: 2800, ordnance: "2x 500lb Bombs + 8x Rockets" },
+        carrierCapable: false, stallSpeed: 88,
+        desc: "The 'Wooden Wonder'. Blistering twin-engine speed, devastating forward cannon bank, lethal against Pacific shipping."
+      },
+
+      // --- EXPERIMENTAL / CAPTURED / WHAT-IF FLIGHT EVALUATION ---
+      ME163_KOMET: {
+        id: "ME163_KOMET", name: "Messerschmitt Me-163B Komet", faction: "ATIU", role: "Rocket Interceptor",
+        topSpeed: 596, climbRate: 10000, turnRate: 70, diveLimit: 610, armor: 50, fuelCapacity: 35, // 3-minute fuel burn!
+        weapons: { guns: "2x 30mm MK 108 Cannons", ammo: 120, ordnance: "None" },
+        carrierCapable: false, stallSpeed: 95,
+        desc: "Liquid rocket interceptor. Climbs to 30,000 ft in 3 minutes! Burns out rapidly; requires dead-stick glide landing."
+      },
+      ME262_SCHWALBE: {
+        id: "ME262_SCHWALBE", name: "Messerschmitt Me-262A-1a Schwalbe", faction: "ATIU", role: "Twin-Jet Interceptor",
+        topSpeed: 540, climbRate: 4000, turnRate: 50, diveLimit: 590, armor: 85, fuelCapacity: 250,
+        weapons: { guns: "4x 30mm MK 108 Cannons", ammo: 360, ordnance: "24x R4M Rockets" },
+        carrierCapable: false, stallSpeed: 105,
+        desc: "Pioneering twin-jet fighter. Extreme high-speed slashing passes, slow throttle spool-up, vulnerable at low speeds."
+      },
+      J8M1_SHUSUI: {
+        id: "J8M1_SHUSUI", name: "Mitsubishi J8M1 Shūsui", faction: "Captured", role: "Rocket Interceptor",
+        topSpeed: 560, climbRate: 9500, turnRate: 72, diveLimit: 600, armor: 40, fuelCapacity: 35,
+        weapons: { guns: "2x 30mm Type 5 Cannons", ammo: 110, ordnance: "None" },
+        carrierCapable: false, stallSpeed: 92,
+        desc: "IJN license-adapted rocket plane. Breathtaking climb rates to counter high-altitude strategic bombers."
+      },
+      AKUTAN_ZERO: {
+        id: "AKUTAN_ZERO", name: "Captured A6M2 'Akutan' Zero", faction: "ATIU", role: "Flight Evaluation",
+        topSpeed: 331, climbRate: 3100, turnRate: 98, diveLimit: 410, armor: 40, fuelCapacity: 140,
+        weapons: { guns: "2x 20mm Type 99 + 2x 7.7mm nose", ammo: 1200, ordnance: "2x 60kg Bombs" },
+        carrierCapable: true, stallSpeed: 60,
+        desc: "Recovered from the Aleutians. Unmatched low-speed turn circle; ailerons stiffen and lock above 250 knots."
+      },
+      J7W1_SHINDEN: {
+        id: "J7W1_SHINDEN", name: "Kyushu J7W1 Shinden", faction: "Captured", role: "Canard Interceptor",
+        topSpeed: 466, climbRate: 4100, turnRate: 78, diveLimit: 540, armor: 75, fuelCapacity: 200,
+        weapons: { guns: "4x 30mm Type 5 Cannons in nose", ammo: 240, ordnance: "4x 60kg Bombs" },
+        carrierCapable: false, stallSpeed: 94,
+        desc: "Radical canard-wing pusher-prop interceptor. Heavy nose cannon bank and supreme high-altitude speed."
+      }
+    };
+
+    // --- ENEMY AIRCRAFT & CAPITAL SHIP COMBATANTS ---
+    const ENEMY_DB = {
+      A6M2_ZERO: {
+        name: "Mitsubishi A6M2 Model 21 'Zero'", role: "Fighter",
+        topSpeed: 331, climbRate: 3100, turnRate: 98, armor: 38, fuelHp: 70,
+        weapons: "2x 20mm Cannons + 2x 7.7mm Guns", xpValue: 120,
+        flakResistance: 40, fatalWeakness: "Unarmored tanks catch fire under concentrated .50 cal hits."
+      },
+      A6M5_ZERO: {
+        name: "Mitsubishi A6M5 Model 52 'Zero'", role: "Carrier Fighter",
+        topSpeed: 351, climbRate: 3300, turnRate: 92, armor: 50, fuelHp: 85,
+        weapons: "2x 20mm Belt-Fed Cannons + 2x 13.2mm Guns", xpValue: 150,
+        flakResistance: 50, fatalWeakness: "Improved dive speed but vulnerable to high-speed deflection snapshots."
+      },
+      KI43_OSCAR: {
+        name: "Nakajima Ki-43 'Oscar'", role: "Army Fighter",
+        topSpeed: 329, climbRate: 3500, turnRate: 100, armor: 30, fuelHp: 60,
+        weapons: "2x 12.7mm Ho-103 Guns", xpValue: 110,
+        flakResistance: 35, fatalWeakness: "Extreme butterfly combat flap turning, but disintegrates under heavy bursts."
+      },
+      KI84_FRANK: {
+        name: "Nakajima Ki-84 'Frank'", role: "Late-War Fighter",
+        topSpeed: 427, climbRate: 4100, turnRate: 82, armor: 85, fuelHp: 110,
+        weapons: "2x 20mm + 2x 30mm Cannons", xpValue: 200,
+        flakResistance: 70, fatalWeakness: "Formidable speed and climb; dive and boom tactics required."
+      },
+      N1K2_GEORGE: {
+        name: "Kawanishi N1K2-J 'George'", role: "Land-Based Interceptor",
+        topSpeed: 369, climbRate: 3900, turnRate: 88, armor: 90, fuelHp: 115,
+        weapons: "4x 20mm Type 99-2 Cannons", xpValue: 210,
+        flakResistance: 75, fatalWeakness: "Automatic combat flaps; deadly in dogfights, outrun with Corsairs/Hellcats."
+      },
+      D3A_VAL: {
+        name: "Aichi D3A 'Val'", role: "Carrier Dive Bomber",
+        topSpeed: 240, climbRate: 1600, turnRate: 65, armor: 45, fuelHp: 80,
+        weapons: "2x 7.7mm forward + 1x 7.7mm rear gunner", xpValue: 90,
+        flakResistance: 50, fatalWeakness: "Fixed landing gear drag; vulnerable during bombing pullout."
+      },
+      B5N_KATE: {
+        name: "Nakajima B5N 'Kate'", role: "Carrier Torpedo Bomber",
+        topSpeed: 235, climbRate: 1400, turnRate: 58, armor: 40, fuelHp: 75,
+        weapons: "1x 7.7mm rear gunner + 1x Type 91 Torpedo", xpValue: 100,
+        flakResistance: 45, fatalWeakness: "Must fly straight and low before release; easy target for high-speed runs."
+      },
+      G4M_BETTY: {
+        name: "Mitsubishi G4M 'Betty'", role: "Twin-Engine Bomber",
+        topSpeed: 266, climbRate: 1800, turnRate: 40, armor: 60, fuelHp: 140,
+        weapons: "1x 20mm tail cannon + 4x 7.7mm waist/nose", xpValue: 180,
+        flakResistance: 60, fatalWeakness: "Known as the 'One-Shot Lighter'; wing fuel tanks ignite easily."
+      },
+
+      // --- CAPITAL WARSHIPS ---
+      IJN_DESTROYER: {
+        name: "IJN Kagero-class Destroyer", role: "Screening Escort Warship",
+        hp: 350, flakIntensity: "MODERATE", guns: "6x 127mm + 28x 25mm AA guns", xpValue: 250,
+        desc: "Screening warship putting up continuous 25mm tracer streams."
+      },
+      IJN_CRUISER: {
+        name: "IJN Mogami-class Heavy Cruiser", role: "Fleet Cruiser",
+        hp: 650, flakIntensity: "HEAVY", guns: "10x 203mm + 60x 25mm AA guns", xpValue: 400,
+        desc: "Thick curtain of heavy flak bursts and rapid-fire naval cannon fire."
+      },
+      IJN_CARRIER: {
+        name: "IJN Fleet Carrier Akagi", role: "Fleet Carrier Flagship",
+        hp: 1200, flakIntensity: "EXTREME", guns: "Full Carrier Combat Air Patrol + 120x AA Barrels", xpValue: 1000,
+        desc: "The heart of Kido Butai. Heavy flak umbrellas, flight deck scrambles, high-value target."
+      }
+    };
+
+    /* ==========================================================================
+       2. SKILL MATRIX DATABASE (7 SKILLS, LEVELS 1 TO 100)
+       ========================================================================== */
+    const SKILLS_DB = {
+      gunnery: {
+        name: "Gunnery & Deflection",
+        desc: "Tightens machine gun dispersion, unlocks high-angle snap shots, boosts critical engine and fuel hits."
+      },
+      gTolerance: {
+        name: "G-Tolerance & Stamina",
+        desc: "Resists pilot blackout/redout during 6G dive pullouts and aggressive defensive breaks."
+      },
+      stickAndRudder: {
+        name: "Stick & Rudder Handling",
+        desc: "Improves turn-rate energy retention, lowers stall speed, enables recovery from spins and buffeting."
+      },
+      bombingTorpedo: {
+        name: "Dive & Torpedo Bombing",
+        desc: "Shrinks bomb impact error radius (CEP) and stabilizes torpedo drops in rough seas."
+      },
+      deckmanship: {
+        name: "Carrier Deckmanship",
+        desc: "Widens LSO paddle error margins, increases #3 arresting wire traps, prevents barrier crashes."
+      },
+      awareness: {
+        name: "Situational Awareness",
+        desc: "Detects incoming bogeys before visual range, spots flak salvos early, counters ambush bounces."
+      },
+      damageControl: {
+        name: "Damage Control & Rigging",
+        desc: "Slows fuel tank leaks, nurses overheating radials, manages severed rudder/aileron cables."
+      }
+    };
+
+    /* ==========================================================================
+       3. GLOBAL GAME STATE ENGINE
+       ========================================================================== */
+    const GAME_STATE = {
+      // Pilot Profile
+      pilot: {
+        name: "Lt. J. Hawthorne",
+        callsign: "DAUNTLESS-LEAD",
+        rank: "Lieutenant (j.g.)",
+        kills: 0,
+        shipsSunk: 0,
+        sortiesFlown: 0,
+        medals: [],
+        currentPlane: "P40B_WARHAWK",
+        unlockedPlanes: ["P40B_WARHAWK", "F2A_BUFFALO", "F4F4_WILDCAT", "TBD1_DEVASTATOR", "SBD3_DAUNTLESS"]
+      },
+
+      // 7 Skill Stats (Level 1-100 & current XP)
+      skills: {
+        gunnery: { level: 12, xp: 45 },
+        gTolerance: { level: 10, xp: 20 },
+        stickAndRudder: { level: 15, xp: 80 },
+        bombingTorpedo: { level: 8, xp: 10 },
+        deckmanship: { level: 5, xp: 0 },
+        awareness: { level: 14, xp: 60 },
+        damageControl: { level: 10, xp: 15 }
+      },
+
+      // In-flight Live Telemetry
+      telemetry: {
+        speed: 210,
+        alt: 3500,
+        throttle: 85,
+        ammo: 100,
+        hull: 100,
+        fuel: 100,
+        engineTemp: 180,
+        oilPressure: 60,
+        inCombat: false,
+        activeTab: "tab-campaign"
+      },
+
+      // Squadron Formation (Dash-2, Dash-3)
+      formation: [
+        { id: "dash2", name: "Dash-2 (Ens. Miller)", status: "READY", hull: 100 },
+        { id: "dash3", name: "Dash-3 (Lt. Vance)", status: "READY", hull: 100 }
+      ],
+
+      // God Mode & Cheat Flags
+      godMode: {
+        invulnerable: false,
+        infiniteAmmo: false,
+        unlimitedFuel: false
+      },
+
+      // Active Campaign State
+      campaign: {
+        act: 1,
+        missionId: "PEARL_HARBOR_SCRAMBLE",
+        phase: "GROUND_TAKEOFF",
+        turn: 0
+      }
+    };
+
+    /* ==========================================================================
+       4. SKILL PROGRESSION & LEVEL MATH (LEVELS 1 - 100)
+       ========================================================================== */
+    function getXpNeeded(level) {
+      if (level >= 100) return Infinity;
+      // Exponential scaling: Level 1 = 100 XP, scaling smoothly up to Lv 100
+      return Math.floor(80 * Math.pow(1.055, level - 1));
+    }
+
+    function awardSkillXP(skillKey, amount) {
+      const sk = GAME_STATE.skills[skillKey];
+      if (!sk || sk.level >= 100) return;
+
+      sk.xp += amount;
+      let needed = getXpNeeded(sk.level);
+
+      while (sk.xp >= needed && sk.level < 100) {
+        sk.xp -= needed;
+        sk.level++;
+        logMessage(`PROMOTION: Skill [${SKILLS_DB[skillKey].name}] increased to Level ${sk.level}!`, "log-hit");
+        needed = getXpNeeded(sk.level);
+      }
+
+      renderSkillsUI();
+      saveGameProgress(false); // Silent auto-save on progression
+    }
+
+    function renderSkillsUI() {
+      const container = document.getElementById("skills-matrix-container");
+      if (!container) return;
+      container.innerHTML = "";
+
+      for (const [key, data] of Object.entries(SKILLS_DB)) {
+        const sk = GAME_STATE.skills[key];
+        const needed = getXpNeeded(sk.level);
+        const pct = sk.level >= 100 ? 100 : Math.min(100, Math.floor((sk.xp / needed) * 100));
+
+        const card = document.createElement("div");
+        card.className = "skill-card";
+        card.innerHTML = `
+          <div class="skill-info">
+            <span class="skill-name">${data.name}</span>
+            <span class="skill-level">LV ${sk.level} / 100 ${sk.level >= 100 ? '(MASTER)' : `(${sk.xp}/${needed} XP)`}</span>
+          </div>
+          <div class="meter-bar" style="height: 5px; margin-bottom: 4px;">
+            <div class="meter-fill fill-stamina" style="width: ${pct}%;"></div>
+          </div>
+          <div style="font-size: 10px; color: var(--text-dim);">${data.desc}</div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    /* ==========================================================================
+       5. HUD TELEMETRY & VIEWPORT RENDERING
+       ========================================================================== */
+    function updateHUD() {
+      const t = GAME_STATE.telemetry;
+      const plane = AIRCRAFT_DB[GAME_STATE.pilot.currentPlane] || AIRCRAFT_DB.P40B_WARHAWK;
+
+      // Labels & Gauges
+      document.getElementById("hud-plane").textContent = plane.name.toUpperCase();
+      document.getElementById("val-speed").textContent = Math.round(t.speed);
+      document.getElementById("val-alt").textContent = Math.round(t.alt).toLocaleString();
+      document.getElementById("val-throttle").textContent = `${Math.round(t.throttle)}%`;
+      document.getElementById("val-ammo").textContent = GAME_STATE.godMode.infiniteAmmo ? "INF" : `${Math.round(t.ammo)}%`;
+
+      // Meters
+      const hullVal = Math.max(0, Math.min(100, t.hull));
+      const fuelVal = Math.max(0, Math.min(100, t.fuel));
+      
+      document.getElementById("txt-hull").textContent = `${Math.round(hullVal)}%`;
+      document.getElementById("bar-hull").style.width = `${hullVal}%`;
+      
+      document.getElementById("txt-fuel").textContent = GAME_STATE.godMode.unlimitedFuel ? "UNLIMITED" : `${Math.round(fuelVal)}%`;
+      document.getElementById("bar-fuel").style.width = GAME_STATE.godMode.unlimitedFuel ? "100%" : `${fuelVal}%`;
+
+      // Wingmen Badges
+      const b2 = document.getElementById("badge-dash2");
+      const b3 = document.getElementById("badge-dash3");
+      if (b2 && GAME_STATE.formation[0]) {
+        updateWingmanBadge(b2, GAME_STATE.formation[0]);
+      }
+      if (b3 && GAME_STATE.formation[1]) {
+        updateWingmanBadge(b3, GAME_STATE.formation[1]);
+      }
+
+      // Dossier Summary
+      document.getElementById("dos-name").textContent = GAME_STATE.pilot.name;
+      document.getElementById("dos-rank").textContent = GAME_STATE.pilot.rank;
+      document.getElementById("dos-kills").textContent = GAME_STATE.pilot.kills;
+      document.getElementById("dos-ships").textContent = GAME_STATE.pilot.shipsSunk;
+      document.getElementById("dos-sorties").textContent = GAME_STATE.pilot.sortiesFlown;
+      document.getElementById("dos-medals").textContent = GAME_STATE.pilot.medals.length > 0 ? GAME_STATE.pilot.medals.join(", ") : "None";
+    }
+
+    function updateWingmanBadge(elem, wingman) {
+      elem.textContent = `${wingman.id.toUpperCase()}: ${wingman.status}`;
+      elem.className = "badge";
+      if (wingman.status === "READY") elem.classList.add("wingman-ok");
+      else if (wingman.status === "DAMAGED" || wingman.status === "ENGAGED") elem.classList.add("wingman-dmg");
+      else elem.classList.add("wingman-down");
+    }
+
+    function logMessage(text, type = "log-info") {
+      const log = document.getElementById("terminal-log");
+      if (!log) return;
+      const entry = document.createElement("div");
+      entry.className = `log-entry ${type}`;
+      entry.innerHTML = text;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    /* ==========================================================================
+       6. NAVIGATION TABS & AIRCRAFT SELECTION ENGINE
+       ========================================================================== */
+    function initNavigationTabs() {
+      const buttons = document.querySelectorAll(".nav-btn");
+      buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const targetTab = btn.getAttribute("data-tab");
+          switchTab(targetTab);
+        });
+      });
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+      const activeBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+      const activeContent = document.getElementById(tabId);
+
+      if (activeBtn) activeBtn.classList.add("active");
+      if (activeContent) activeContent.classList.add("active");
+
+      GAME_STATE.telemetry.activeTab = tabId;
+
+      if (tabId === "tab-pilot") renderSkillsUI();
+    }
+
+    function populateAircraftSelects() {
+      const select = document.getElementById("dogfight-player-plane");
+      if (!select) return;
+      select.innerHTML = "";
+
+      for (const [key, plane] of Object.entries(AIRCRAFT_DB)) {
+        const opt = document.createElement("option");
+        opt.value = key;
+        const locked = !GAME_STATE.pilot.unlockedPlanes.includes(key);
+        opt.textContent = `${plane.name} [${plane.faction} - ${plane.role}]${locked ? ' (LOCKED)' : ''}`;
+        if (locked && !GAME_STATE.godMode.allUnlocked) {
+          opt.disabled = true;
+        }
+        select.appendChild(opt);
+      }
+      select.value = GAME_STATE.pilot.currentPlane;
+    }
+
+    /* ==========================================================================
+       7. SAVE, LOAD, EXPORT & IMPORT ENGINE (CROSS-DEVICE READY)
+       ========================================================================== */
+    const STORAGE_KEY = "PACIFIC_PILOT_SIM_SAVE_DATA_V1";
+
+    function saveGameProgress(showLog = true) {
+      try {
+        const payload = JSON.stringify({
+          pilot: GAME_STATE.pilot,
+          skills: GAME_STATE.skills,
+          campaign: GAME_STATE.campaign,
+          timestamp: Date.now()
+        });
+        localStorage.setItem(STORAGE_KEY, payload);
+        if (showLog) logMessage("[SYS] Career and flight telemetry saved successfully.", "log-sys");
+      } catch (err) {
+        if (showLog) logMessage("[ERR] Local storage save failed: " + err.message, "log-danger");
+      }
+    }
+
+    function loadGameProgress(showLog = true) {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          if (showLog) logMessage("[SYS] No local save record found.", "log-warn");
+          return false;
+        }
+        const data = JSON.parse(raw);
+        if (data.pilot) Object.assign(GAME_STATE.pilot, data.pilot);
+        if (data.skills) Object.assign(GAME_STATE.skills, data.skills);
+        if (data.campaign) Object.assign(GAME_STATE.campaign, data.campaign);
+
+        updateHUD();
+        renderSkillsUI();
+        populateAircraftSelects();
+        if (showLog) logMessage("[SYS] Career record restored from storage.", "log-hit");
+        return true;
+      } catch (err) {
+        if (showLog) logMessage("[ERR] Error restoring save data: " + err.message, "log-danger");
+        return false;
+      }
+    }
+
+    function exportSaveToText() {
+      const payload = JSON.stringify({
+        pilot: GAME_STATE.pilot,
+        skills: GAME_STATE.skills,
+        campaign: GAME_STATE.campaign
+      });
+      // Base64 encode for safe copying across iOS Notes / PC email
+      const encoded = btoa(payload);
+      const box = document.getElementById("save-data-box");
+      if (box) {
+        box.value = encoded;
+        box.select();
+        logMessage("[SYS] Career save string generated. Copy this text to your PC or Notes.", "log-sys");
+      }
+    }
+
+    function importSaveFromText() {
+      const box = document.getElementById("save-data-box");
+      if (!box || !box.value.trim()) {
+        logMessage("[WARN] Paste a valid save code into the box first.", "log-warn");
+        return;
+      }
+      try {
+        const decoded = atob(box.value.trim());
+        const data = JSON.parse(decoded);
+        if (data.pilot && data.skills) {
+          Object.assign(GAME_STATE.pilot, data.pilot);
+          Object.assign(GAME_STATE.skills, data.skills);
+          if (data.campaign) Object.assign(GAME_STATE.campaign, data.campaign);
+
+          updateHUD();
+          renderSkillsUI();
+          populateAircraftSelects();
+          saveGameProgress(false);
+          logMessage("[SYS] Save data imported successfully! Career updated.", "log-hit");
+        } else {
+          throw new Error("Missing required pilot profile keys.");
+        }
+      } catch (e) {
+        logMessage("[ERR] Invalid save string format. Could not import.", "log-danger");
+      }
+    }
+
+    function resetCareer() {
+      if (confirm("CONFIRM REQUISITION: Are you sure you want to wipe your pilot service record and restart from zero?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+      }
+    }
+
+    /* ==========================================================================
+       8. GOD MODE & TESTING SUITE CONTROLS
+       ========================================================================== */
+    function initGodModeControls() {
+      const invuln = document.getElementById("god-invulnerable");
+      const infAmmo = document.getElementById("god-infinite-ammo");
+      const unlimFuel = document.getElementById("god-unlimited-fuel");
+
+      if (invuln) {
+        invuln.addEventListener("change", (e) => {
+          GAME_STATE.godMode.invulnerable = e.target.checked;
+          logMessage(`[GOD MODE] Invulnerability set to: ${e.target.checked}`, "log-warn");
+        });
+      }
+      if (infAmmo) {
+        infAmmo.addEventListener("change", (e) => {
+          GAME_STATE.godMode.infiniteAmmo = e.target.checked;
+          if (e.target.checked) GAME_STATE.telemetry.ammo = 100;
+          updateHUD();
+          logMessage(`[GOD MODE] Infinite Ammunition set to: ${e.target.checked}`, "log-warn");
+        });
+      }
+      if (unlimFuel) {
+        unlimFuel.addEventListener("change", (e) => {
+          GAME_STATE.godMode.unlimitedFuel = e.target.checked;
+          if (e.target.checked) GAME_STATE.telemetry.fuel = 100;
+          updateHUD();
+          logMessage(`[GOD MODE] Unlimited Fuel set to: ${e.target.checked}`, "log-warn");
+        });
+      }
+
+      document.getElementById("btn-god-max-stats").addEventListener("click", () => {
+        for (const sk of Object.values(GAME_STATE.skills)) {
+          sk.level = 100;
+          sk.xp = 0;
+        }
+        renderSkillsUI();
+        logMessage("[GOD MODE] All 7 pilot skills upgraded to maximum (Level 100).", "log-hit");
+      });
+
+      document.getElementById("btn-god-unlock-all").addEventListener("click", () => {
+        GAME_STATE.pilot.unlockedPlanes = Object.keys(AIRCRAFT_DB);
+        GAME_STATE.godMode.allUnlocked = true;
+        populateAircraftSelects();
+        logMessage("[GOD MODE] All 27 aircraft unlocked and available across all modes.", "log-hit");
+      });
+
+      document.getElementById("btn-god-autowin").addEventListener("click", () => {
+        logMessage("[GOD MODE] Auto-Win command triggered. Objective cleared.", "log-hit");
+        if (typeof window.triggerCombatAutoWin === "function") {
+          window.triggerCombatAutoWin();
+        }
+      });
+
+      // Save/Load Buttons
+      document.getElementById("btn-save-game").addEventListener("click", () => saveGameProgress(true));
+      document.getElementById("btn-load-game").addEventListener("click", () => loadGameProgress(true));
+      document.getElementById("btn-export-save").addEventListener("click", exportSaveToText);
+      document.getElementById("btn-import-save").addEventListener("click", importSaveFromText);
+      document.getElementById("btn-reset-career").addEventListener("click", resetCareer);
+    }
+
+    /* ==========================================================================
+       9. SYSTEM BOOTSTRAP (PART 2 INITIALIZATION)
+       ========================================================================== */
+    window.addEventListener("DOMContentLoaded", () => {
+      initNavigationTabs();
+      initGodModeControls();
+      loadGameProgress(false); // Try loading existing local progress on load
+      populateAircraftSelects();
+      renderSkillsUI();
+      updateHUD();
+      logMessage("[SYS] Flight systems and avionics telemetry initialized.", "log-sys");
+    });
+
+    // --- [PART 2 CLOSING - PART 3 COMBAT, FORMATIONS & CAMPAIGN ENGINE CONTINUES BELOW] ---
+/* ==========================================================================
+       PART 3: COMBAT ENGINE, FORMATION AI, TRAINING RANGE & PACIFIC CAMPAIGN
+       ========================================================================== */
+
+    // --- WEB AUDIO RETRO SOUND SYNTHESIZER ---
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === "suspended") {
+          this.ctx.resume();
+        }
+      },
+      play(type) {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const t = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          if (type === "gun") {
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(120, t);
+            osc.frequency.exponentialRampToValueAtTime(30, t + 0.12);
+            gain.gain.setValueAtTime(0.3, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
+            osc.start(t);
+            osc.stop(t + 0.12);
+          } else if (type === "hit") {
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(70, t);
+            osc.frequency.exponentialRampToValueAtTime(20, t + 0.25);
+            gain.gain.setValueAtTime(0.4, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+            osc.start(t);
+            osc.stop(t + 0.25);
+          } else if (type === "flak") {
+            osc.type = "square";
+            osc.frequency.setValueAtTime(50, t);
+            osc.frequency.linearRampToValueAtTime(25, t + 0.35);
+            gain.gain.setValueAtTime(0.5, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+            osc.start(t);
+            osc.stop(t + 0.35);
+          } else if (type === "bell") {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(880, t);
+            gain.gain.setValueAtTime(0.25, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+            osc.start(t);
+            osc.stop(t + 0.6);
+          } else if (type === "horn") {
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(300, t);
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.linearRampToValueAtTime(0.01, t + 0.4);
+            osc.start(t);
+            osc.stop(t + 0.4);
+          }
+        } catch (e) {
+          // Audio optional; ignore auto-play constraints
+        }
+      }
+    };
+
+    /* ==========================================================================
+       2. DYNAMIC ACTION GRID CONTROLLER
+       ========================================================================== */
+    function setActionButtons(buttonList) {
+      const grid = document.getElementById("action-grid");
+      if (!grid) return;
+      grid.innerHTML = "";
+
+      buttonList.forEach(item => {
+        const btn = document.createElement("button");
+        btn.className = `act-btn ${item.colorClass || 'btn-blue'}`;
+        btn.innerHTML = `
+          <span>${item.label}</span>
+          ${item.sub ? `<span class="btn-sub">${item.sub}</span>` : ''}
+        `;
+        btn.addEventListener("click", () => {
+          AudioEngine.play("bell");
+          item.action();
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    /* ==========================================================================
+       3. TACTICAL COMBAT & FORMATION ENGINE
+       ========================================================================== */
+    const CombatSession = {
+      active: false,
+      context: "DOGFIGHT", // DOGFIGHT, FLEET_STRIKE, CAMPAIGN
+      enemy: null,
+      enemyHp: 100,
+      enemyMaxHp: 100,
+      range: "MEDIUM", // CLOSE, MEDIUM, LONG
+      advantage: "NEUTRAL", // OFFENSIVE, NEUTRAL, DEFENSIVE
+      round: 1,
+      flightSize: 2,
+      onCompleteCallback: null,
+
+      start(config) {
+        this.active = true;
+        this.context = config.context || "DOGFIGHT";
+        this.enemy = JSON.parse(JSON.stringify(config.enemy));
+        this.enemyHp = this.enemy.hp || this.enemy.fuelHp || 100;
+        this.enemyMaxHp = this.enemyHp;
+        this.range = config.range || "MEDIUM";
+        this.advantage = config.advantage || "NEUTRAL";
+        this.flightSize = config.flightSize || 2;
+        this.round = 1;
+        this.onCompleteCallback = config.onComplete || null;
+
+        GAME_STATE.telemetry.inCombat = true;
+        switchTab("tab-campaign");
+
+        logMessage(`[CONTACT] Bogey identified: ${this.enemy.name}!`, "log-danger");
+        logMessage(`Tactical Status: Starting range ${this.range}, Advantage: ${this.advantage}.`, "log-warn");
+
+        this.renderCombatRound();
+      },
+
+      renderCombatRound() {
+        if (!this.active) return;
+        updateHUD();
+
+        const plane = AIRCRAFT_DB[GAME_STATE.pilot.currentPlane] || AIRCRAFT_DB.P40B_WARHAWK;
+        const e = this.enemy;
+
+        logMessage(`--- COMBAT TURN ${this.round} [RANGE: ${this.range} | STATUS: ${this.advantage}] ---`, "log-sys");
+        logMessage(`Enemy: ${e.name} [Integrity: ${Math.max(0, Math.round(this.enemyHp))}/${this.enemyMaxHp}]`, "log-info");
+
+        const buttons = [];
+
+        // 1. Offensive Attacks
+        if (this.advantage === "OFFENSIVE" || this.range === "CLOSE") {
+          buttons.push({
+            label: "DEFLECTION SNAPSHOT",
+            sub: "High-angle machine gun lead burst",
+            colorClass: "btn-red",
+            action: () => this.playerAttack("GUNS_DEFLECTION")
+          });
+        } else {
+          buttons.push({
+            label: "FIRE GUN BURST",
+            sub: "Standard converging trigger squeeze",
+            colorClass: "btn-red",
+            action: () => this.playerAttack("GUNS_STANDARD")
+          });
+        }
+
+        // 2. Flight Energy Tactics
+        if (plane.topSpeed >= e.topSpeed || plane.diveLimit > 460) {
+          buttons.push({
+            label: "BOOM & ZOOM PASS",
+            sub: "Dive at high speed, strike & climb out",
+            colorClass: "btn-blue",
+            action: () => this.playerManeuver("BOOM_AND_ZOOM")
+          });
+        } else {
+          buttons.push({
+            label: "HIGH-YOYO MANEUVER",
+            sub: "Trade speed for altitude, pitch back down",
+            colorClass: "btn-blue",
+            action: () => this.playerManeuver("HIGH_YOYO")
+          });
+        }
+
+        // 3. Formation Wingman Tactics
+        if (this.flightSize >= 2 && GAME_STATE.formation[0].status === "READY") {
+          if (this.advantage === "DEFENSIVE") {
+            buttons.push({
+              label: "EXECUTE THACH WEAVE",
+              sub: "Crisscross S-turns to clear tail",
+              colorClass: "btn-amber",
+              action: () => this.wingmanOrder("THACH_WEAVE")
+            });
+          } else {
+            buttons.push({
+              label: "WINGMAN PINCER ATTACK",
+              sub: "Dash-2 coordinates crossfire",
+              colorClass: "btn-amber",
+              action: () => this.wingmanOrder("PINCER")
+            });
+          }
+        } else {
+          buttons.push({
+            label: "DEFENSIVE SCISSORS",
+            sub: "Hard horizontal reversals to force overshoot",
+            colorClass: "btn-amber",
+            action: () => this.playerManeuver("SCISSORS")
+          });
+        }
+
+        // 4. Evasive Jink or Ordnance
+        if (plane.weapons.ordnance && plane.weapons.ordnance !== "None" && this.enemy.role.includes("Warship")) {
+          buttons.push({
+            label: "RELEASE ORDNANCE",
+            sub: "Commit bomb or torpedo run",
+            colorClass: "btn-green",
+            action: () => this.playerAttack("ORDNANCE")
+          });
+        } else {
+          buttons.push({
+            label: "JINK & DISENGAGE",
+            sub: "Violent rudder snaps to evade gun solution",
+            colorClass: "btn-green",
+            action: () => this.playerManeuver("JINK")
+          });
+        }
+
+        setActionButtons(buttons);
+      },
+
+      playerAttack(type) {
+        AudioEngine.play("gun");
+        const gunnery = GAME_STATE.skills.gunnery.level;
+        let hitRoll = Math.random() * 100 + (gunnery * 0.4);
+
+        if (this.advantage === "OFFENSIVE") hitRoll += 25;
+        if (this.advantage === "DEFENSIVE") hitRoll -= 20;
+        if (this.range === "CLOSE") hitRoll += 15;
+
+        if (type === "ORDNANCE") {
+          const bombSkill = GAME_STATE.skills.bombingTorpedo.level;
+          const hit = (Math.random() * 100 + bombSkill * 0.5) > 40;
+          if (hit) {
+            AudioEngine.play("flak");
+            const dmg = 350 + (bombSkill * 4);
+            this.enemyHp -= dmg;
+            logMessage(`DIRECT HIT! Ordnance struck ${this.enemy.name} for ${dmg} massive structural damage!`, "log-hit");
+            awardSkillXP("bombingTorpedo", 45);
+          } else {
+            logMessage("ORDNANCE MISSED: Geyser erupted harmlessly in the sea.", "log-warn");
+            awardSkillXP("bombingTorpedo", 10);
+          }
+        } else {
+          // Guns
+          if (hitRoll > 45) {
+            AudioEngine.play("hit");
+            let dmg = 25 + Math.floor(Math.random() * 25) + (gunnery * 0.5);
+            // Critical check
+            const crit = Math.random() * 100 < (15 + gunnery * 0.3);
+            if (crit) {
+              dmg *= 2.2;
+              logMessage(`CRITICAL HIT! High-caliber burst detonated fuel tanks / ripped engine cowl! (-${Math.round(dmg)} HP)`, "log-hit");
+            } else {
+              logMessage(`HITS CONFIRMED! Tracers rip through ${this.enemy.name}'s fuselage. (-${Math.round(dmg)} HP)`, "log-hit");
+            }
+            this.enemyHp -= dmg;
+            awardSkillXP("gunnery", 25);
+          } else {
+            logMessage("BURST DRIFTED WIDE: Tracers zipped harmlessly past the enemy cockpit.", "log-info");
+            awardSkillXP("gunnery", 8);
+          }
+        }
+
+        this.consumePlayerResources();
+        if (this.checkCombatResolution()) return;
+        this.enemyTurn();
+      },
+
+      playerManeuver(type) {
+        const stick = GAME_STATE.skills.stickAndRudder.level;
+        const gTol = GAME_STATE.skills.gTolerance.level;
+
+        if (type === "BOOM_AND_ZOOM") {
+          AudioEngine.play("horn");
+          logMessage("Pushed into screaming power dive! Airspeed surging past 360 knots.", "log-action");
+          if (Math.random() * 100 < (85 + stick * 0.2)) {
+            this.advantage = "OFFENSIVE";
+            this.range = "CLOSE";
+            logMessage("Zoom climb completed! You pull up directly behind the enemy's high six!", "log-hit");
+            awardSkillXP("stickAndRudder", 20);
+            awardSkillXP("gTolerance", 15);
+          } else {
+            logMessage("Enemy rolled away; dive bled energy into neutral standoff.", "log-info");
+          }
+        } else if (type === "HIGH_YOYO") {
+          logMessage("Pulled nose steep into the vertical, bleeding overtake speed.", "log-action");
+          this.advantage = "OFFENSIVE";
+          this.range = "MEDIUM";
+          awardSkillXP("stickAndRudder", 15);
+        } else if (type === "SCISSORS") {
+          logMessage("Throwing alternating high-G rudder kicks in rolling scissors!", "log-action");
+          if (this.advantage === "DEFENSIVE") {
+            this.advantage = "NEUTRAL";
+            logMessage("Enemy overshot forward through your slipstream! Tail cleared!", "log-hit");
+            awardSkillXP("stickAndRudder", 25);
+          }
+        } else if (type === "JINK") {
+          logMessage("Aggressive jinking evasive rolls through flak and tracers.", "log-action");
+          this.advantage = "NEUTRAL";
+          this.range = "LONG";
+          awardSkillXP("awareness", 15);
+        }
+
+        this.consumePlayerResources();
+        if (this.checkCombatResolution()) return;
+        this.enemyTurn();
+      },
+
+      wingmanOrder(order) {
+        if (order === "THACH_WEAVE") {
+          logMessage('"Dash-2, execute Thach Weave! Break right, I break left!"', "log-radio");
+          AudioEngine.play("horn");
+          const awareness = GAME_STATE.skills.awareness.level;
+          const success = Math.random() * 100 < (75 + awareness * 0.3);
+
+          if (success) {
+            AudioEngine.play("hit");
+            logMessage('"Got him lined up!" Dash-2 crosses over your tail, raking the tailing Zero in a head-on deflection run!', "log-radio");
+            const dmg = 45 + Math.floor(Math.random() * 30);
+            this.enemyHp -= dmg;
+            this.advantage = "OFFENSIVE";
+            awardSkillXP("awareness", 30);
+            awardSkillXP("stickAndRudder", 20);
+          } else {
+            logMessage("Weave timing was ragged; enemy remained glued to your section.", "log-warn");
+          }
+        } else if (order === "PINCER") {
+          logMessage('"Dash-2, bracket him from port, I take starboard!"', "log-radio");
+          AudioEngine.play("gun");
+          this.enemyHp -= 30;
+          this.advantage = "OFFENSIVE";
+          logMessage("Pincer closed! Enemy forced into defensive panic.", "log-hit");
+        }
+
+        this.consumePlayerResources();
+        if (this.checkCombatResolution()) return;
+        this.enemyTurn();
+      },
+
+      enemyTurn() {
+        const e = this.enemy;
+        logMessage(`[ENEMY ACTION] ${e.name} retaliates with ${e.weapons}!`, "log-warn");
+
+        if (this.advantage === "OFFENSIVE") {
+          logMessage(`${e.name} is evading hard, struggling to pull lead on your flight.`, "log-info");
+        } else {
+          AudioEngine.play("gun");
+          let enemyHitRoll = Math.random() * 100;
+          const defense = GAME_STATE.skills.awareness.level * 0.3 + GAME_STATE.skills.stickAndRudder.level * 0.2;
+          enemyHitRoll -= defense;
+
+          if (enemyHitRoll > 40) {
+            AudioEngine.play("hit");
+            if (!GAME_STATE.godMode.invulnerable) {
+              const incoming = Math.floor(12 + Math.random() * 18);
+              GAME_STATE.telemetry.hull -= incoming;
+              logMessage(`SHRAPNEL IMPACT: Canopy rattled, hull integrity took ${incoming}% damage!`, "log-danger");
+
+              // Subsystem check
+              if (Math.random() < 0.25) {
+                logMessage("DAMAGE TELEMETRY: Oil cooling line punctured! Engine temp rising!", "log-danger");
+                GAME_STATE.telemetry.engineTemp += 45;
+                awardSkillXP("damageControl", 20);
+              }
+            } else {
+              logMessage("[GOD MODE] Incoming fire deflected harmlessly off airframe.", "log-sys");
+            }
+          } else {
+            logMessage("Evasive flight successful! Incoming tracers streak harmlessly past your port wingtip.", "log-hit");
+          }
+        }
+
+        this.round++;
+        this.renderCombatRound();
+      },
+
+      consumePlayerResources() {
+        if (!GAME_STATE.godMode.infiniteAmmo) {
+          GAME_STATE.telemetry.ammo = Math.max(0, GAME_STATE.telemetry.ammo - 4);
+        }
+        if (!GAME_STATE.godMode.unlimitedFuel) {
+          GAME_STATE.telemetry.fuel = Math.max(0, GAME_STATE.telemetry.fuel - 2);
+        }
+        updateHUD();
+      },
+
+      checkCombatResolution() {
+        // Player defeated
+        if (GAME_STATE.telemetry.hull <= 0) {
+          this.active = false;
+          GAME_STATE.telemetry.inCombat = false;
+          AudioEngine.play("flak");
+          logMessage("CATASTROPHIC FAILURE: Structural integrity collapsed. Bailing out over the Pacific!", "log-danger");
+
+          setActionButtons([{
+            label: "EMERGENCY DITCHING / RESCUE",
+            sub: "Wait for PBY Catalina search & rescue",
+            colorClass: "btn-red",
+            action: () => {
+              GAME_STATE.telemetry.hull = 60;
+              GAME_STATE.telemetry.fuel = 70;
+              logMessage("Rescued from shark-filled waters by friendly PBY Catalina! Recovering in hospital.", "log-sys");
+              CampaignEngine.renderHub();
+            }
+          }]);
+          return true;
+        }
+
+        // Enemy defeated
+        if (this.enemyHp <= 0) {
+          this.active = false;
+          GAME_STATE.telemetry.inCombat = false;
+          AudioEngine.play("flak");
+          logMessage(`SPLASH ONE! ${this.enemy.name} breaks apart in flames and plunges into the ocean!`, "log-hit");
+
+          if (this.enemy.role.includes("Warship")) {
+            GAME_STATE.pilot.shipsSunk++;
+            logMessage(`NAVAL CITATION: Confirmed sinking of ${this.enemy.name}!`, "log-hit");
+          } else {
+            GAME_STATE.pilot.kills++;
+          }
+
+          awardSkillXP("gunnery", 50);
+          awardSkillXP("awareness", 30);
+          saveGameProgress(false);
+
+          setActionButtons([{
+            label: "VICTORY: RETURN TO FORMATION",
+            sub: "Regroup with squadron element",
+            colorClass: "btn-green",
+            action: () => {
+              if (this.onCompleteCallback) {
+                this.onCompleteCallback();
+              } else {
+                CampaignEngine.renderHub();
+              }
+            }
+          }]);
+          return true;
+        }
+
+        return false;
+      }
+    };
+
+    // Global God Mode hook
+    window.triggerCombatAutoWin = function() {
+      if (CombatSession.active) {
+        CombatSession.enemyHp = 0;
+        CombatSession.checkCombatResolution();
+      } else {
+        logMessage("[GOD MODE] Auto-Win noted. No active combat engaged.", "log-sys");
+      }
+    };
+
+    /* ==========================================================================
+       4. CARRIER OPERATIONS & TRAINING RANGE STATE MACHINE
+       ========================================================================== */
+    const TrainingEngine = {
+      stage: 0,
+      idealSpeed: 82,
+
+      start(moduleId) {
+        switchTab("tab-campaign");
+        this.stage = 1;
+
+        if (moduleId === "CARRIER_TAKEOFF") {
+          this.runTakeoff();
+        } else if (moduleId === "CARRIER_TRAP") {
+          this.runCarrierTrap();
+        } else if (moduleId === "DIVE_BOMB") {
+          this.runDiveBomb();
+        } else if (moduleId === "TORPEDO_RUN") {
+          this.runTorpedoRun();
+        } else if (moduleId === "ROCKET_GLIDE") {
+          this.runRocketGlide();
+        }
+      },
+
+      // --- 1. CARRIER TAKEOFF ---
+      runTakeoff() {
+        logMessage("=== CARRIER QUALIFICATION: FLIGHT DECK TAKEOFF ===", "log-sys");
+        logMessage("USS Enterprise (CV-6) steaming into a 30-knot headwind. Deck crew clears catapult zone.", "log-info");
+        GAME_STATE.telemetry.speed = 0;
+        GAME_STATE.telemetry.alt = 45;
+        GAME_STATE.telemetry.throttle = 0;
+        updateHUD();
+
+        setActionButtons([
+          {
+            label: "SET TAKEOFF FLAPS & LOCK BRAKES",
+            sub: "Flaps 20 degrees, run up radial to 100% throttle",
+            colorClass: "btn-blue",
+            action: () => {
+              GAME_STATE.telemetry.throttle = 100;
+              updateHUD();
+              AudioEngine.play("horn");
+              logMessage("Radial engine roaring at full manifold pressure! Tail vibrating against deck cleats.", "log-action");
+
+              setActionButtons([{
+                label: "RELEASE BRAKES & COMMIT DECK RUN",
+                sub: "Keep rudder aligned against deck pitching",
+                colorClass: "btn-green",
+                action: () => {
+                  const deckSkill = GAME_STATE.skills.deckmanship.level;
+                  const roll = Math.random() * 100 + deckSkill * 0.4;
+                  if (roll > 25) {
+                    GAME_STATE.telemetry.speed = 95;
+                    GAME_STATE.telemetry.alt = 350;
+                    updateHUD();
+                    AudioEngine.play("bell");
+                    logMessage("AIRBORNE! Cleared the carrier bow with 50 feet of sea clearance. Wheels retracted!", "log-hit");
+                    awardSkillXP("deckmanship", 35);
+                    awardSkillXP("stickAndRudder", 20);
+                  } else {
+                    logMessage("Stalled slightly off the bow! Skimmed sea spray before hauling back stick!", "log-warn");
+                    awardSkillXP("deckmanship", 15);
+                  }
+                  TrainingEngine.finishModule();
+                }
+              }]);
+            }
+          }
+        ]);
+      },
+
+      // --- 2. CARRIER TRAP (LSO PADDLE SIMULATOR) ---
+      runCarrierTrap() {
+        logMessage("=== CARRIER QUALIFICATION: THE CARRIER TRAP ===", "log-sys");
+        logMessage("Entering final carrier groove. USS Enterprise pitching in heavy Pacific swells.", "log-info");
+        GAME_STATE.telemetry.alt = 400;
+        GAME_STATE.telemetry.speed = 105;
+        GAME_STATE.telemetry.throttle = 65;
+        updateHUD();
+
+        this.trapStep1();
+      },
+
+      trapStep1() {
+        logMessage("[LSO SIGNAL] Paddles held high above head: 'TOO HIGH / DIP NOSE!'", "log-warn");
+        AudioEngine.play("horn");
+
+        setActionButtons([
+          {
+            label: "DIP NOSE & REDUCE THROTTLE",
+            sub: "Drop nose 3 degrees, pull throttle to 50%",
+            colorClass: "btn-green",
+            action: () => {
+              GAME_STATE.telemetry.alt = 180;
+              GAME_STATE.telemetry.speed = 88;
+              logMessage("Glideslope locked. Aircraft settling smoothly toward flight deck.", "log-hit");
+              awardSkillXP("deckmanship", 15);
+              TrainingEngine.trapStep2();
+            }
+          },
+          {
+            label: "HOLD ALTITUDE / IGNORE PADDLES",
+            sub: "Maintain current approach descent",
+            colorClass: "btn-red",
+            action: () => {
+              logMessage("[LSO SHOUT] 'WAVE OFF! WAVE OFF!' You came in too hot and overflew the wires!", "log-danger");
+              awardSkillXP("deckmanship", 5);
+              TrainingEngine.finishModule();
+            }
+          }
+        ]);
+      },
+
+      trapStep2() {
+        logMessage("[LSO SIGNAL] Paddles level horizontal: 'APPROACH PERFECT. ON GLIDESLOPE.'", "log-info");
+        setActionButtons([
+          {
+            label: "AWAIT CUT SIGNAL",
+            sub: "Keep angle of attack trimmed",
+            colorClass: "btn-blue",
+            action: () => {
+              TrainingEngine.trapStep3();
+            }
+          }
+        ]);
+      },
+
+      trapStep3() {
+        logMessage("[LSO SIGNAL] Paddles slash sharply across throat: 'CUT ENGINE!'", "log-warn");
+        AudioEngine.play("bell");
+
+        setActionButtons([
+          {
+            label: "CHOP THROTTLE TO IDLE",
+            sub: "Cut engine, pull stick into three-point attitude",
+            colorClass: "btn-green",
+            action: () => {
+              const skill = GAME_STATE.skills.deckmanship.level;
+              const roll = Math.random() * 100 + skill * 0.5;
+
+              if (roll > 40) {
+                AudioEngine.play("hit");
+                GAME_STATE.telemetry.speed = 0;
+                GAME_STATE.telemetry.alt = 45;
+                updateHUD();
+                logMessage("PERFECT TRAP! Tailhook caught the #3 WIRE! Hydraulic arresting gear groans to a halt!", "log-hit");
+                awardSkillXP("deckmanship", 50);
+              } else if (roll > 20) {
+                logMessage("Caught the #1 wire! Dangerously close to the stern ramp, but trapped safe!", "log-warn");
+                awardSkillXP("deckmanship", 25);
+              } else {
+                logMessage("BOLTER! Tailhook bounced over the wires! Full throttle go-around!", "log-danger");
+                awardSkillXP("deckmanship", 10);
+              }
+              TrainingEngine.finishModule();
+            }
+          }
+        ]);
+      },
+
+      // --- 3. DIVE BOMBING RANGE ---
+      runDiveBomb() {
+        logMessage("=== SBD DAUNTLESS 70-DEGREE DIVE BOMBING QUALIFICATION ===", "log-sys");
+        logMessage("Target sled anchored off Oahu. Altitude 12,000 feet.", "log-info");
+
+        setActionButtons([{
+          label: "DEPLOY PERFORATED DIVE FLAPS & ROLL INVERTED",
+          sub: "Swiss-cheese flaps extend, pitch nose down 70 degrees",
+          colorClass: "btn-blue",
+          action: () => {
+            AudioEngine.play("horn");
+            logMessage("Screaming slipstream! Wind howling through dive brake perforations. Speed stabilized at 245 kts.", "log-action");
+
+            setActionButtons([{
+              label: "PICKLE BOMB AT 1,500 FT & PULL 6G EXIT",
+              sub: "Release 1,000lb bomb centerline",
+              colorClass: "btn-red",
+              action: () => {
+                AudioEngine.play("flak");
+                const bSkill = GAME_STATE.skills.bombingTorpedo.level;
+                const gSkill = GAME_STATE.skills.gTolerance.level;
+                const score = Math.random() * 100 + bSkill * 0.5;
+
+                if (score > 40) {
+                  logMessage("BULLSEYE! Target sled vaporized in a 100-foot column of ocean spray!", "log-hit");
+                  awardSkillXP("bombingTorpedo", 45);
+                  awardSkillXP("gTolerance", 25);
+                } else {
+                  logMessage("Near miss: 30 yards off the starboard buoy.", "log-warn");
+                  awardSkillXP("bombingTorpedo", 15);
+                }
+                TrainingEngine.finishModule();
+              }
+            }]);
+          }
+        }]);
+      },
+
+      // --- 4. SEA-SKIMMING TORPEDO RUN ---
+      runTorpedoRun() {
+        logMessage("=== TBF AVENGER LOW-ALTITUDE TORPEDO ATTACK DRILL ===", "log-sys");
+        logMessage("Target: Target hulk at 1,200 yards. Envelope: 100 ft altitude, 110 knots.", "log-info");
+
+        setActionButtons([{
+          label: "LEVEL OFF AT 100 FEET OVER WAVES",
+          sub: "Trim elevator to skim sea spray at 110 knots",
+          colorClass: "btn-blue",
+          action: () => {
+            const skill = GAME_STATE.skills.bombingTorpedo.level;
+            logMessage("Altitude 100 ft, needle steady on 110 kts. Water rushing underneath.", "log-action");
+
+            setActionButtons([{
+              label: "DROP MARK 13 TORPEDO",
+              sub: "Release fish into optimal water-entry angle",
+              colorClass: "btn-green",
+              action: () => {
+                AudioEngine.play("bell");
+                const hit = (Math.random() * 100 + skill * 0.5) > 35;
+                if (hit) {
+                  AudioEngine.play("flak");
+                  logMessage("TORPEDO RUNNING TRUE! Straight wake... TORPEDO IMPACT! Target ship broken in two!", "log-hit");
+                  awardSkillXP("bombingTorpedo", 50);
+                } else {
+                  logMessage("Torpedo broached a wave and porpoised off course.", "log-warn");
+                  awardSkillXP("bombingTorpedo", 15);
+                }
+                TrainingEngine.finishModule();
+              }
+            }]);
+          }
+        }]);
+      },
+
+      // --- 5. ROCKET GLIDE SKID LANDING ---
+      runRocketGlide() {
+        logMessage("=== ME-163 KOMET / J8M1 DEAD-STICK SKID LANDING ===", "log-sys");
+        logMessage("Rocket motor fuel depleted! Gliding without engine power at 140 kts.", "log-warn");
+
+        setActionButtons([{
+          label: "EXTEND LANDING SKID & S-TURN TO BLEED SPEED",
+          sub: "No second chances—pure kinetic energy management",
+          colorClass: "btn-amber",
+          action: () => {
+            AudioEngine.play("horn");
+            const stick = GAME_STATE.skills.stickAndRudder.level;
+            const success = (Math.random() * 100 + stick * 0.5) > 40;
+
+            if (success) {
+              AudioEngine.play("hit");
+              logMessage("SMOOTH SKID TOUCHDOWN! Sand and sparks spray as the Komet skids safely to a halt on the runway!", "log-hit");
+              awardSkillXP("stickAndRudder", 50);
+            } else {
+              logMessage("Rough hard skid impact! Airframe bounced violently but pilot walked away!", "log-warn");
+              awardSkillXP("stickAndRudder", 20);
+            }
+            TrainingEngine.finishModule();
+          }
+        }]);
+      },
+
+      finishModule() {
+        saveGameProgress(false);
+        setActionButtons([{
+          label: "TRAINING COMPLETE: RETURN",
+          sub: "Return to Carrier Air Group roster",
+          colorClass: "btn-green",
+          action: () => CampaignEngine.renderHub()
+        }]);
+      }
+    };
+
+    /* ==========================================================================
+       5. MULTI-SORTIE PACIFIC CAMPAIGN ENGINE
+       ========================================================================== */
+    const CampaignEngine = {
+      turnAroundPoints: 10,
+
+      init() {
+        this.renderHub();
+      },
+
+      renderHub() {
+        switchTab("tab-campaign");
+        const act = GAME_STATE.campaign.act;
+        logMessage(`--- PACIFIC WAR HUB: CAMPAIGN ACT ${act} ---`, "log-sys");
+
+        const buttons = [];
+
+        if (act === 1) {
+          buttons.push({
+            label: "ACT I: PEARL HARBOR (DEC 7, 1941)",
+            sub: "Emergency scramble under strafing fire",
+            colorClass: "btn-red",
+            action: () => this.startPearlHarbor()
+          });
+        } else if (act === 2) {
+          buttons.push({
+            label: "ACT II: CARRIER FLIGHT SCHOOL",
+            sub: "Qualify on USS Enterprise (CV-6)",
+            colorClass: "btn-blue",
+            action: () => this.startCarrierSchool()
+          });
+        } else if (act === 3) {
+          buttons.push({
+            label: "ACT III: BATTLE OF CORAL SEA",
+            sub: "First carrier duel in history (May 1942)",
+            colorClass: "btn-red",
+            action: () => this.startCoralSea()
+          });
+        } else if (act === 4) {
+          buttons.push({
+            label: "ACT IV: BATTLE OF MIDWAY",
+            sub: "Multi-sortie strike on Kido Butai (June 1942)",
+            colorClass: "btn-red",
+            action: () => this.startMidwaySortie1()
+          });
+        } else if (act === 5) {
+          buttons.push({
+            label: "ACT V: GUADALCANAL CACTUS AIR FORCE",
+            sub: "Henderson Field operations (Late 1942)",
+            colorClass: "btn-amber",
+            action: () => this.startGuadalcanal()
+          });
+        } else {
+          buttons.push({
+            label: "ACT VI: MARIANAS TURKEY SHOOT",
+            sub: "Apex carrier air battle (1944)",
+            colorClass: "btn-red",
+            action: () => this.startMarianas()
+          });
+        }
+
+        buttons.push({
+          label: "VIEW LOGBOOK & REQUISITION",
+          sub: "Inspect service medals and flight record",
+          colorClass: "btn-blue",
+          action: () => switchTab("tab-pilot")
+        });
+
+        setActionButtons(buttons);
+      },
+
+      // --- ACT I: PEARL HARBOR ---
+      startPearlHarbor() {
+        GAME_STATE.pilot.currentPlane = "P40B_WARHAWK";
+        updateHUD();
+        logMessage("PEARL HARBOR: Japanese dive bombers screaming down out of the clouds over Pearl Harbor!", "log-danger");
+        AudioEngine.play("flak");
+
+        setActionButtons([{
+          label: "SPRINT TO P-40B & SCRAMBLE",
+          sub: "Dodge bomb craters and take off from Wheeler",
+          colorClass: "btn-red",
+          action: () => {
+            AudioEngine.play("horn");
+            logMessage("Allison engine roared to life! Slung the Warhawk across grass runway as Zeroes strafed the hangars!", "log-action");
+
+            CombatSession.start({
+              context: "CAMPAIGN",
+              enemy: ENEMY_DB.D3A_VAL,
+              advantage: "OFFENSIVE",
+              range: "CLOSE",
+              flightSize: 1,
+              onComplete: () => {
+                logMessage("First Val dive bomber splashed over Oahu! Now an escort Zero dives on you!", "log-warn");
+                CombatSession.start({
+                  context: "CAMPAIGN",
+                  enemy: ENEMY_DB.A6M2_ZERO,
+                  advantage: "NEUTRAL",
+                  range: "MEDIUM",
+                  flightSize: 1,
+                  onComplete: () => {
+                    GAME_STATE.campaign.act = 2;
+                    GAME_STATE.pilot.medals.push("Pearl Harbor Survivor Ribbon");
+                    saveGameProgress(false);
+                    logMessage("VICTORY OVER OAHU: You defended Wheeler Field! Promoted to carrier duty!", "log-hit");
+                    CampaignEngine.renderHub();
+                  }
+                });
+              }
+            });
+          }
+        }]);
+      },
+
+      // --- ACT II: CARRIER FLIGHT QUALIFICATION ---
+      startCarrierSchool() {
+        logMessage("REPORTING ABOARD USS ENTERPRISE (CV-6): Assigned to VF-6 flying the F4F-4 Wildcat.", "log-sys");
+        GAME_STATE.pilot.currentPlane = "F4F4_WILDCAT";
+        updateHUD();
+
+        setActionButtons([{
+          label: "FLY CARRIER QUALIFICATION TRAP",
+          sub: "Score a 3-wire trap to deploy into active combat",
+          colorClass: "btn-blue",
+          action: () => {
+            TrainingEngine.start("CARRIER_TRAP");
+            GAME_STATE.campaign.act = 3;
+            saveGameProgress(false);
+          }
+        }]);
+      },
+
+      // --- ACT III: CORAL SEA ---
+      startCoralSea() {
+        logMessage("BATTLE OF THE CORAL SEA (MAY 1942): Radar detects incoming Nakajima B5N 'Kate' torpedo planes targeting USS Lexington!", "log-danger");
+
+        CombatSession.start({
+          context: "CAMPAIGN",
+          enemy: ENEMY_DB.B5N_KATE,
+          advantage: "OFFENSIVE",
+          range: "MEDIUM",
+          flightSize: 2,
+          onComplete: () => {
+            GAME_STATE.campaign.act = 4;
+            GAME_STATE.pilot.medals.push("Distinguished Flying Cross");
+            saveGameProgress(false);
+            logMessage("CORAL SEA HERO: You saved the fleet screen! Prepared for Midway ambush.", "log-hit");
+            CampaignEngine.renderHub();
+          }
+        });
+      },
+
+      // --- ACT IV: MIDWAY MULTI-SORTIE CAMPAIGN ---
+      startMidwaySortie1() {
+        logMessage("=== BATTLE OF MIDWAY: SORTIE 1 (MORNING CAP) ===", "log-danger");
+        logMessage("Dawn June 4, 1942. Japanese strike wing approaching the American fleet!", "log-warn");
+
+        CombatSession.start({
+          context: "CAMPAIGN",
+          enemy: ENEMY_DB.A6M2_ZERO,
+          advantage: "NEUTRAL",
+          range: "LONG",
+          flightSize: 2,
+          onComplete: () => {
+            CampaignEngine.midwayDeckServicing();
+          }
+        });
+      },
+
+      midwayDeckServicing() {
+        logMessage("=== CARRIER FLIGHT DECK SERVICING (USS ENTERPRISE) ===", "log-sys");
+        logMessage(`Turnaround Points remaining: ${this.turnAroundPoints}. Spend points to service aircraft:`, "log-info");
+
+        const updateServicingButtons = () => {
+          setActionButtons([
+            {
+              label: `PATCH AIRFRAME & ARMOR (+25% HP) [Cost: 3 Pts]`,
+              sub: `Current Hull: ${Math.round(GAME_STATE.telemetry.hull)}%`,
+              colorClass: "btn-green",
+              action: () => {
+                if (this.turnAroundPoints >= 3) {
+                  this.turnAroundPoints -= 3;
+                  GAME_STATE.telemetry.hull = Math.min(100, GAME_STATE.telemetry.hull + 25);
+                  logMessage("Ground crew hammered out shrapnel and patched fuel tanks.", "log-hit");
+                  updateHUD();
+                  updateServicingButtons();
+                } else {
+                  logMessage("Insufficient turnaround points!", "log-warn");
+                }
+              }
+            },
+            {
+              label: `REARM AMMO & BOMBS (+50% Ammo) [Cost: 2 Pts]`,
+              sub: `Current Ammo: ${Math.round(GAME_STATE.telemetry.ammo)}%`,
+              colorClass: "btn-blue",
+              action: () => {
+                if (this.turnAroundPoints >= 2) {
+                  this.turnAroundPoints -= 2;
+                  GAME_STATE.telemetry.ammo = Math.min(100, GAME_STATE.telemetry.ammo + 50);
+                  logMessage("Ammunition belts loaded into wing bays.", "log-hit");
+                  updateHUD();
+                  updateServicingButtons();
+                }
+              }
+            },
+            {
+              label: "COMMENCE SORTIE 2: MAIN FLEET STRIKE",
+              sub: "Dive bomb Japanese flagship Akagi!",
+              colorClass: "btn-red",
+              action: () => {
+                CampaignEngine.startMidwaySortie2();
+              }
+            }
+          ]);
+        };
+
+        updateServicingButtons();
+      },
+
+      startMidwaySortie2() {
+        logMessage("SORTIE 2: The Akagi is spotted turning into the wind! Flight deck packed with refueled Zeroes!", "log-danger");
+        AudioEngine.play("flak");
+
+        CombatSession.start({
+          context: "FLEET_STRIKE",
+          enemy: ENEMY_DB.IJN_CARRIER,
+          advantage: "OFFENSIVE",
+          range: "LONG",
+          flightSize: 2,
+          onComplete: () => {
+            GAME_STATE.campaign.act = 5;
+            GAME_STATE.pilot.medals.push("Navy Cross");
+            saveGameProgress(false);
+            logMessage("MIDWAY VICTORY: Three Japanese carriers burning in the Pacific! The tide has turned!", "log-hit");
+            CampaignEngine.renderHub();
+          }
+        });
+      },
+
+      // --- ACT V: GUADALCANAL CACTUS AIR FORCE ---
+      startGuadalcanal() {
+        logMessage("GUADALCANAL (CACTUS AIR FORCE): Muddy runway at Henderson Field. Japanese Tokyo Express cruisers bombarding our lines!", "log-danger");
+        GAME_STATE.pilot.currentPlane = "P39D_AIRACOBRA";
+        updateHUD();
+
+        CombatSession.start({
+          context: "CAMPAIGN",
+          enemy: ENEMY_DB.IJN_CRUISER,
+          advantage: "OFFENSIVE",
+          range: "CLOSE",
+          flightSize: 2,
+          onComplete: () => {
+            GAME_STATE.campaign.act = 6;
+            GAME_STATE.pilot.medals.push("Air Medal");
+            saveGameProgress(false);
+            logMessage("GUADALCANAL SECURED: Tokyo Express cruiser driven off with severe damage!", "log-hit");
+            CampaignEngine.renderHub();
+          }
+        });
+      },
+
+      // --- ACT VI: MARIANAS TURKEY SHOOT ---
+      startMarianas() {
+        logMessage("THE GREAT MARIANAS TURKEY SHOOT (1944): Scrambled in the Grumman F6F-5 Hellcat! Hundreds of incoming Japanese planes detected on radar!", "log-danger");
+        GAME_STATE.pilot.currentPlane = "F6F5_HELLCAT";
+        updateHUD();
+
+        CombatSession.start({
+          context: "CAMPAIGN",
+          enemy: ENEMY_DB.A6M5_ZERO,
+          advantage: "OFFENSIVE",
+          range: "CLOSE",
+          flightSize: 4,
+          onComplete: () => {
+            GAME_STATE.pilot.medals.push("Medal of Honor");
+            saveGameProgress(false);
+            logMessage("APEX ACE OF THE PACIFIC: You led the turkey shoot! War in the Pacific won!", "log-hit");
+            CampaignEngine.renderHub();
+          }
+        });
+      }
+    };
+
+    /* ==========================================================================
+       6. QUICK DOGFIGHT & TRAINING SETUP LISTENERS
+       ========================================================================== */
+    function initModeListeners() {
+      // Quick Dogfight Launcher
+      const btnDogfight = document.getElementById("btn-start-dogfight");
+      if (btnDogfight) {
+        btnDogfight.addEventListener("click", () => {
+          const planeKey = document.getElementById("dogfight-player-plane").value;
+          const enemyKey = document.getElementById("dogfight-enemy-plane").value;
+          const flightSize = parseInt(document.getElementById("dogfight-flight-size").value, 10);
+          const adv = document.getElementById("dogfight-advantage").value;
+
+          GAME_STATE.pilot.currentPlane = planeKey;
+          const enemyTemplate = ENEMY_DB[enemyKey] || ENEMY_DB.A6M2_ZERO;
+
+          CombatSession.start({
+            context: "DOGFIGHT",
+            enemy: enemyTemplate,
+            advantage: adv,
+            flightSize: flightSize,
+            range: adv === "OFFENSIVE" ? "CLOSE" : "MEDIUM"
+          });
+        });
+      }
+
+      // Training Range Launcher
+      const btnTraining = document.getElementById("btn-start-training");
+      if (btnTraining) {
+        btnTraining.addEventListener("click", () => {
+          const moduleKey = document.getElementById("training-module-select").value;
+          TrainingEngine.start(moduleKey);
+        });
+      }
+
+      // Initial Campaign Action Button Wiring
+      const defAction = document.getElementById("btn-default-action");
+      if (defAction) {
+        defAction.addEventListener("click", () => {
+          CampaignEngine.renderHub();
+        });
+      }
+      const defInspect = document.getElementById("btn-default-inspect");
+      if (defInspect) {
+        defInspect.addEventListener("click", () => {
+          switchTab("tab-manual");
+        });
+      }
+    }
+
+    // Attach listeners on load
+    window.addEventListener("DOMContentLoaded", () => {
+      initModeListeners();
+    });
+  </script>
+</body>
+</html>
